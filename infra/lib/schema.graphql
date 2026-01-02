@@ -1,0 +1,181 @@
+type User {
+  userId: ID!
+  email: String!
+  displayName: String!
+  avatarUrl: String
+  bio: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Book {
+  isbn: String!
+  title: String!
+  authors: [String!]!
+  coverUrl: String
+  description: String
+  pageCount: Int
+  publishedDate: String
+  subjects: [String]
+  averageRating: Float
+  ratingsCount: Int
+}
+
+enum Shelf {
+  WANT_TO_READ
+  CURRENTLY_READING
+  READ
+}
+
+type UserBook {
+  userId: ID!
+  bookId: String!
+  shelf: Shelf!
+  rating: Int
+  startedAt: AWSDateTime
+  finishedAt: AWSDateTime
+  pagesRead: Int
+  addedAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Review {
+  bookId: String!
+  reviewId: ID!
+  userId: ID!
+  rating: Int!
+  content: String
+  createdAt: AWSDateTime!
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+type Friend {
+  userId: ID!
+  friendId: ID!
+  status: FriendStatus!
+  createdAt: AWSDateTime!
+}
+
+enum ActivityType {
+  ADDED_BOOK
+  STARTED_READING
+  FINISHED_BOOK
+  RATED_BOOK
+  REVIEWED_BOOK
+  ADDED_FRIEND
+}
+
+type Activity {
+  userId: ID!
+  timestamp: AWSDateTime!
+  type: ActivityType!
+  bookId: String
+  friendId: ID
+  rating: Int
+  message: String
+}
+
+type ReadingStats {
+  userId: ID!
+  period: String!
+  booksRead: Int!
+  pagesRead: Int!
+  averageRating: Float
+  favoriteGenre: String
+}
+
+# Input types
+input CreateUserInput {
+  email: String!
+  displayName: String!
+  bio: String
+  avatarUrl: String
+}
+
+input UpdateUserInput {
+  displayName: String
+  bio: String
+  avatarUrl: String
+}
+
+input AddBookToShelfInput {
+  bookId: String!
+  shelf: Shelf!
+  rating: Int
+  startedAt: AWSDateTime
+  finishedAt: AWSDateTime
+}
+
+input UpdateBookShelfInput {
+  bookId: String!
+  shelf: Shelf!
+  rating: Int
+  startedAt: AWSDateTime
+  finishedAt: AWSDateTime
+  pagesRead: Int
+}
+
+input CreateReviewInput {
+  bookId: String!
+  rating: Int!
+  content: String
+}
+
+# Queries
+type Query {
+  # User queries
+  me: User
+  getUser(userId: ID!): User
+  searchUsers(query: String!, limit: Int): [User]
+
+  # Book queries
+  myBooks: [UserBook]
+  getUserBooks(userId: ID!): [UserBook]
+  getBookReviews(bookId: String!, limit: Int): [Review]
+
+  # Social queries
+  getFriends: [Friend]
+  getFriendRequests: [Friend]
+  getActivityFeed(limit: Int): [Activity]
+
+  # Stats queries
+  getReadingStats: [ReadingStats]
+}
+
+# Mutations
+type Mutation {
+  # User mutations
+  createUser(input: CreateUserInput!): User
+  updateUser(input: UpdateUserInput!): User
+
+  # Book mutations
+  addBookToShelf(input: AddBookToShelfInput!): UserBook
+  updateBookShelf(input: UpdateBookShelfInput!): UserBook
+  removeBookFromShelf(bookId: String!): UserBook
+
+  # Review mutations
+  createReview(input: CreateReviewInput!): Review
+  deleteReview(bookId: String!, reviewId: ID!): Review
+
+  # Social mutations
+  addFriend(friendId: ID!): Friend
+  acceptFriend(friendId: ID!): Friend
+  removeFriend(friendId: ID!): Friend
+}
+
+# Subscriptions for real-time updates
+type Subscription {
+  onFriendActivity(userId: ID!): Activity
+    @aws_subscribe(mutations: ["addBookToShelf", "createReview"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

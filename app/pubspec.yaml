@@ -1,0 +1,50 @@
+name: better_reads_app
+description: "A better Goodreads - track books, connect with readers, discover your next read."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # AWS Amplify
+  amplify_flutter: ^2.0.0
+  amplify_auth_cognito: ^2.0.0
+  amplify_api: ^2.0.0
+
+  # State Management
+  provider: ^6.1.0
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Networking
+  http: ^1.2.0
+
+  # UI Components
+  cached_network_image: ^3.3.0
+  fl_chart: ^0.68.0
+
+  # Barcode Scanner
+  mobile_scanner: ^5.0.0
+
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.0.0
+  shared_preferences: ^2.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
