@@ -1,0 +1,52 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app"
+    },
+    {
+      "name": "Flutter (Profile)",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Flutter (Release)",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app",
+      "flutterMode": "release"
+    },
+    {
+      "name": "Flutter iOS Simulator",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app",
+      "deviceId": "iPhone"
+    },
+    {
+      "name": "Flutter Chrome (Web)",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app",
+      "deviceId": "chrome"
+    },
+    {
+      "name": "Flutter macOS",
+      "type": "dart",
+      "request": "launch",
+      "program": "app/lib/main.dart",
+      "cwd": "${workspaceFolder}/app",
+      "deviceId": "macos"
+    }
+  ]
+}

@@ -170,8 +170,10 @@ type Mutation {
 
 # Subscriptions for real-time updates
 type Subscription {
-  onFriendActivity(userId: ID!): Activity
-    @aws_subscribe(mutations: ["addBookToShelf", "createReview"])
+  onBookAdded(userId: ID!): UserBook
+    @aws_subscribe(mutations: ["addBookToShelf"])
+  onReviewCreated(bookId: String!): Review
+    @aws_subscribe(mutations: ["createReview"])
 }
 
 schema {
