@@ -1,35 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Uncomment when Amplify is configured:
-// import 'package:amplify_flutter/amplify_flutter.dart';
-// import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-// import 'amplifyconfiguration.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_api/amplify_api.dart';
+import 'amplifyconfiguration.dart';
 
-import 'providers/auth_provider.dart';
+import 'providers/auth_provider.dart' as app_auth;
 import 'providers/books_provider.dart';
 import 'router.dart';
 import 'utils/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Uncomment when Amplify is configured:
-  // await _configureAmplify();
-
+  await _configureAmplify();
   runApp(const BetterReadsApp());
 }
 
-// Uncomment when Amplify is configured:
-// Future<void> _configureAmplify() async {
-//   try {
-//     final auth = AmplifyAuthCognito();
-//     await Amplify.addPlugins([auth]);
-//     await Amplify.configure(amplifyconfig);
-//     debugPrint('Amplify configured successfully');
-//   } catch (e) {
-//     debugPrint('Error configuring Amplify: $e');
-//   }
-// }
+Future<void> _configureAmplify() async {
+  try {
+    final auth = AmplifyAuthCognito();
+    final api = AmplifyAPI();
+    await Amplify.addPlugins([auth, api]);
+    await Amplify.configure(amplifyconfig);
+    debugPrint('Amplify configured successfully');
+  } on AmplifyAlreadyConfiguredException {
+    debugPrint('Amplify was already configured');
+  } catch (e) {
+    debugPrint('Error configuring Amplify: $e');
+  }
+}
 
 class BetterReadsApp extends StatelessWidget {
   const BetterReadsApp({super.key});
@@ -38,10 +37,10 @@ class BetterReadsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => app_auth.AuthProvider()),
         ChangeNotifierProvider(create: (_) => BooksProvider()),
       ],
-      child: Consumer<AuthProvider>(
+      child: Consumer<app_auth.AuthProvider>(
         builder: (context, authProvider, _) {
           final router = createRouter(authProvider);
 
