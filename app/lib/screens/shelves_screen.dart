@@ -132,7 +132,9 @@ class ShelvesScreen extends StatelessWidget {
               ? _buildPrideFab(context)
               : theme.type == ShelfThemeType.fantasy
                   ? _buildFantasyFab(context, theme)
-                  : FloatingActionButton(
+                  : theme.type == ShelfThemeType.classicWood
+                      ? _buildClassicWoodFab(context, theme)
+                      : FloatingActionButton(
                       onPressed: () => CreateShelfDialog.show(context),
                       tooltip: 'Create Shelf',
                       elevation: 8,
@@ -454,6 +456,53 @@ class ShelvesScreen extends StatelessWidget {
               width: 32,
               height: 32,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClassicWoodFab(BuildContext context, ShelfTheme theme) {
+    return GestureDetector(
+      onTap: () => CreateShelfDialog.show(context),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.dividerLightColor, // Polished highlight
+              theme.dividerMiddleColor, // Warm shelf body
+              theme.dividerDarkColor, // Rich shelf dark
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFB8860B), // Brass
+            width: 2,
+          ),
+          boxShadow: [
+            // Warm amber glow
+            BoxShadow(
+              color: theme.dividerLightColor.withValues(alpha: 0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+            // Deep shadow
+            BoxShadow(
+              color: const Color(0xFF1A0F0A).withValues(alpha: 0.5),
+              blurRadius: 6,
+              offset: const Offset(2, 3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            Icons.auto_stories_rounded,
+            color: theme.textPrimaryColor, // Warm cream
+            size: 28,
           ),
         ),
       ),

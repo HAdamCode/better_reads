@@ -234,6 +234,7 @@ class BookcaseShelfRow extends StatelessWidget {
     final isMinimalist = theme.type == ShelfThemeType.minimalist;
     final isFantasy = theme.type == ShelfThemeType.fantasy;
     final isRomance = theme.type == ShelfThemeType.romance;
+    final isClassicWood = theme.type == ShelfThemeType.classicWood;
 
     final content = Container(
       width: 120,
@@ -243,7 +244,7 @@ class BookcaseShelfRow extends StatelessWidget {
             ? theme.dividerMiddleColor.withValues(alpha: 0.3)
             : Colors.black.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6),
-        border: isFantasy
+        border: (isFantasy || isClassicWood)
             ? null
             : Border.all(
                 color: theme.textSecondaryColor.withValues(alpha: 0.3),
@@ -298,18 +299,24 @@ class BookcaseShelfRow extends StatelessWidget {
                             color: Colors.white,
                           ),
                         )
-                      : Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: theme.textPrimaryColor.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.add,
-                            size: 28,
-                            color: theme.textPrimaryColor,
-                          ),
-                        ),
+                      : isClassicWood
+                          ? Icon(
+                              Icons.auto_stories_rounded,
+                              size: 56,
+                              color: theme.textPrimaryColor,
+                            )
+                          : Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: theme.textPrimaryColor.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                size: 28,
+                                color: theme.textPrimaryColor,
+                              ),
+                            ),
           const SizedBox(height: 10),
           Text(
             'Add Books',
@@ -335,7 +342,12 @@ class BookcaseShelfRow extends StatelessWidget {
                   painter: _RoseBorderPainter(seed: title.hashCode),
                   child: content,
                 )
-              : content,
+              : isClassicWood
+                  ? CustomPaint(
+                      painter: _CarvedWoodBorderPainter(seed: title.hashCode),
+                      child: content,
+                    )
+                  : content,
     );
   }
 }
@@ -1160,6 +1172,275 @@ class _MagicRuneBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MagicRuneBorderPainter oldDelegate) =>
+      oldDelegate.seed != seed;
+}
+
+/// Custom painter for carved wood border (classic wood theme)
+/// Rustic library aesthetic with wood grain, brass corners, and bookplate style
+class _CarvedWoodBorderPainter extends CustomPainter {
+  final int seed;
+
+  _CarvedWoodBorderPainter({this.seed = 42});
+
+  // Classic wood color palette
+  static const _woodDark = Color(0xFF3D2517);
+  static const _woodMid = Color(0xFF5C3A22);
+  static const _woodLight = Color(0xFF8B5A3C);
+  static const _woodHighlight = Color(0xFFD4A574);
+  static const _brass = Color(0xFFB8860B);
+  static const _brassLight = Color(0xFFDAA520);
+  static const _shadow = Color(0xFF1A0F0A);
+
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
+
+  int _randomIndex = 0;
+
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _randomIndex = 0;
+
+    // Layer 1: Outer shadow
+    _drawShadow(canvas, size);
+
+    // Layer 2: Wood frame border
+    _drawWoodFrame(canvas, size);
+
+    // Layer 3: Wood grain texture on frame
+    _drawWoodGrain(canvas, size);
+
+    // Layer 4: Brass corner accents
+    _drawBrassCorners(canvas, size);
+
+    // Layer 5: Inner bookplate line
+    _drawBookplateLine(canvas, size);
+  }
+
+  void _drawShadow(Canvas canvas, Size size) {
+    final shadowPaint = Paint()
+      ..color = _shadow.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+
+    final path = _createBorderPath(size, 0);
+    canvas.save();
+    canvas.translate(2, 2);
+    canvas.drawPath(path, shadowPaint);
+    canvas.restore();
+  }
+
+  void _drawWoodFrame(Canvas canvas, Size size) {
+    // Main wood frame
+    final framePaint = Paint()
+      ..color = _woodMid
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = _createBorderPath(size, 0);
+    canvas.drawPath(path, framePaint);
+
+    // Inner edge highlight
+    final highlightPaint = Paint()
+      ..color = _woodLight.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final innerPath = _createBorderPath(size, 2);
+    canvas.drawPath(innerPath, highlightPaint);
+
+    // Outer edge shadow
+    final outerShadowPaint = Paint()
+      ..color = _woodDark.withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final outerPath = _createBorderPath(size, -1);
+    canvas.drawPath(outerPath, outerShadowPaint);
+  }
+
+  Path _createBorderPath(Size size, double inset) {
+    final path = Path();
+    final cornerRadius = 6.0;
+
+    path.moveTo(inset + cornerRadius, inset + 4);
+    path.lineTo(size.width - inset - cornerRadius, inset + 4);
+    path.quadraticBezierTo(
+      size.width - inset - 2, inset + 2,
+      size.width - inset - 4, inset + cornerRadius,
+    );
+    path.lineTo(size.width - inset - 4, size.height - inset - cornerRadius);
+    path.quadraticBezierTo(
+      size.width - inset - 2, size.height - inset - 2,
+      size.width - inset - cornerRadius, size.height - inset - 4,
+    );
+    path.lineTo(inset + cornerRadius, size.height - inset - 4);
+    path.quadraticBezierTo(
+      inset + 2, size.height - inset - 2,
+      inset + 4, size.height - inset - cornerRadius,
+    );
+    path.lineTo(inset + 4, inset + cornerRadius);
+    path.quadraticBezierTo(
+      inset + 2, inset + 2,
+      inset + cornerRadius, inset + 4,
+    );
+
+    return path;
+  }
+
+  void _drawWoodGrain(Canvas canvas, Size size) {
+    final grainPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5
+      ..strokeCap = StrokeCap.round;
+
+    // Horizontal grain lines on top and bottom
+    for (double x = 12; x < size.width - 12; x += 8 + _nextRandom() * 6) {
+      // Top edge grain
+      grainPaint.color = (_nextRandom() > 0.5 ? _woodDark : _woodLight).withValues(alpha: 0.4);
+      final topY = 4 + _nextRandom() * 2;
+      canvas.drawLine(
+        Offset(x, topY),
+        Offset(x + 4 + _nextRandom() * 8, topY + (_nextRandom() - 0.5) * 2),
+        grainPaint,
+      );
+
+      // Bottom edge grain
+      grainPaint.color = (_nextRandom() > 0.5 ? _woodDark : _woodLight).withValues(alpha: 0.4);
+      final bottomY = size.height - 4 - _nextRandom() * 2;
+      canvas.drawLine(
+        Offset(x, bottomY),
+        Offset(x + 4 + _nextRandom() * 8, bottomY + (_nextRandom() - 0.5) * 2),
+        grainPaint,
+      );
+    }
+
+    // Vertical grain lines on left and right
+    for (double y = 12; y < size.height - 12; y += 8 + _nextRandom() * 6) {
+      // Left edge grain
+      grainPaint.color = (_nextRandom() > 0.5 ? _woodDark : _woodLight).withValues(alpha: 0.4);
+      final leftX = 4 + _nextRandom() * 2;
+      canvas.drawLine(
+        Offset(leftX, y),
+        Offset(leftX + (_nextRandom() - 0.5) * 2, y + 4 + _nextRandom() * 8),
+        grainPaint,
+      );
+
+      // Right edge grain
+      grainPaint.color = (_nextRandom() > 0.5 ? _woodDark : _woodLight).withValues(alpha: 0.4);
+      final rightX = size.width - 4 - _nextRandom() * 2;
+      canvas.drawLine(
+        Offset(rightX, y),
+        Offset(rightX + (_nextRandom() - 0.5) * 2, y + 4 + _nextRandom() * 8),
+        grainPaint,
+      );
+    }
+  }
+
+  void _drawBrassCorners(Canvas canvas, Size size) {
+    // Draw brass corner brackets
+    _drawCornerBracket(canvas, Offset(6, 6), 1, 1);
+    _drawCornerBracket(canvas, Offset(size.width - 6, 6), -1, 1);
+    _drawCornerBracket(canvas, Offset(6, size.height - 6), 1, -1);
+    _drawCornerBracket(canvas, Offset(size.width - 6, size.height - 6), -1, -1);
+  }
+
+  void _drawCornerBracket(Canvas canvas, Offset corner, double xDir, double yDir) {
+    final bracketLength = 14.0;
+
+    // Shadow
+    final shadowPaint = Paint()
+      ..color = _shadow.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.save();
+    canvas.translate(0.5, 0.5);
+    canvas.drawLine(
+      corner,
+      Offset(corner.dx + xDir * bracketLength, corner.dy),
+      shadowPaint,
+    );
+    canvas.drawLine(
+      corner,
+      Offset(corner.dx, corner.dy + yDir * bracketLength),
+      shadowPaint,
+    );
+    canvas.restore();
+
+    // Main brass
+    final brassPaint = Paint()
+      ..color = _brass
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      corner,
+      Offset(corner.dx + xDir * bracketLength, corner.dy),
+      brassPaint,
+    );
+    canvas.drawLine(
+      corner,
+      Offset(corner.dx, corner.dy + yDir * bracketLength),
+      brassPaint,
+    );
+
+    // Highlight
+    final highlightPaint = Paint()
+      ..color = _brassLight.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(corner.dx + xDir * 1, corner.dy - yDir * 0.5),
+      Offset(corner.dx + xDir * (bracketLength - 2), corner.dy - yDir * 0.5),
+      highlightPaint,
+    );
+
+    // Corner rivet/nail
+    final rivetPaint = Paint()
+      ..color = _brass
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(corner, 2.5, rivetPaint);
+
+    final rivetHighlight = Paint()
+      ..color = _brassLight.withValues(alpha: 0.7)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(corner.dx - 0.5, corner.dy - 0.5), 1.0, rivetHighlight);
+  }
+
+  void _drawBookplateLine(Canvas canvas, Size size) {
+    // Inner decorative line like a bookplate
+    final linePaint = Paint()
+      ..color = _woodHighlight.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    final inset = 10.0;
+    final path = Path();
+    path.moveTo(inset + 4, inset + 8);
+    path.lineTo(size.width - inset - 4, inset + 8);
+    path.lineTo(size.width - inset - 4, size.height - inset - 8);
+    path.lineTo(inset + 4, size.height - inset - 8);
+    path.close();
+
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CarvedWoodBorderPainter oldDelegate) =>
       oldDelegate.seed != seed;
 }
 
