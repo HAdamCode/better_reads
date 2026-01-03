@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../models/shelf_theme.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
 import '../providers/lending_provider.dart';
+import '../providers/shelf_theme_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/book_card.dart';
 import '../widgets/bookcase_shelf_row.dart';
 import '../widgets/create_shelf_dialog.dart';
+import '../widgets/shelf_painters.dart';
+import '../widgets/theme_selector_sheet.dart';
 import '../widgets/wooden_shelf_divider.dart';
 
 class ShelvesScreen extends StatelessWidget {
@@ -16,14 +20,24 @@ class ShelvesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF5D3A1A),
-      appBar: AppBar(
-        title: const Text('My Library'),
-      ),
-      body: Consumer3<BooksProvider, ShelvesProvider, LendingProvider>(
-        builder: (context, booksProvider, shelvesProvider, lendingProvider, _) {
-          return RefreshIndicator(
+    return Consumer4<BooksProvider, ShelvesProvider, LendingProvider, ShelfThemeProvider>(
+      builder: (context, booksProvider, shelvesProvider, lendingProvider, themeProvider, _) {
+        final theme = themeProvider.theme;
+        final isMinimalist = theme.type == ShelfThemeType.minimalist;
+
+        return Scaffold(
+          backgroundColor: isMinimalist ? null : theme.backgroundColor,
+          appBar: AppBar(
+            title: const Text('My Library'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.palette_outlined),
+                tooltip: 'Change theme',
+                onPressed: () => ThemeSelectorSheet.show(context),
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
             onRefresh: () async {
               await booksProvider.syncFromBackend();
             },
@@ -41,6 +55,7 @@ class ShelvesScreen extends StatelessWidget {
                     heroTagPrefix: 'book-shelf-reading',
                     showEmptyState: true,
                     onAddTap: () => context.go('/search'),
+                    theme: theme,
                   ),
                 ),
 
@@ -55,6 +70,7 @@ class ShelvesScreen extends StatelessWidget {
                     heroTagPrefix: 'book-shelf-want',
                     showEmptyState: true,
                     onAddTap: () => context.go('/search'),
+                    theme: theme,
                   ),
                 ),
 
@@ -69,19 +85,20 @@ class ShelvesScreen extends StatelessWidget {
                     heroTagPrefix: 'book-shelf-read',
                     showEmptyState: true,
                     onAddTap: () => context.go('/search'),
+                    theme: theme,
                   ),
                 ),
 
                 // Lent Out shelf (only if there are active loans)
                 if (lendingProvider.activeLoans.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: _buildLentOutRow(context, lendingProvider, booksProvider),
+                    child: _buildLentOutRow(context, lendingProvider, booksProvider, theme),
                   ),
 
                 // Custom Shelves section header (only if there are custom shelves)
                 if (shelvesProvider.sortedShelves.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: _buildCustomShelvesHeader(context),
+                    child: _buildCustomShelvesHeader(context, theme),
                   ),
 
                 // Custom Shelves
@@ -96,6 +113,7 @@ class ShelvesScreen extends StatelessWidget {
                       onTitleTap: () => context.push('/shelf/${shelf.id}'),
                       onAddTap: () => context.go('/search'),
                       showEmptyState: true,
+                      theme: theme,
                     ),
                   );
                 }),
@@ -104,19 +122,43 @@ class ShelvesScreen extends StatelessWidget {
                 SliverToBoxAdapter(
                   child: Container(
                     height: 100,
-                    color: const Color(0xFF5D3A1A),
+                    color: isMinimalist ? null : theme.backgroundColor,
                   ),
                 ),
               ],
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => CreateShelfDialog.show(context),
-        tooltip: 'Create Shelf',
-        child: const Icon(Icons.add),
-      ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => CreateShelfDialog.show(context),
+            tooltip: 'Create Shelf',
+            elevation: 8,
+            backgroundColor: theme.dividerLightColor,
+            foregroundColor: theme.type == ShelfThemeType.minimalist
+                ? theme.textPrimaryColor
+                : theme.sidePanelMiddleColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: theme.sidePanelMiddleColor,
+                width: 2,
+              ),
+            ),
+            child: theme.type == ShelfThemeType.fantasy
+                ? ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      theme.textPrimaryColor, // Gold
+                      BlendMode.srcIn,
+                    ),
+                    child: Image.asset(
+                      'assets/images/image.png',
+                      width: 24,
+                      height: 24,
+                    ),
+                  )
+                : const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 
@@ -125,9 +167,9 @@ class ShelvesScreen extends StatelessWidget {
     return '$count ${count == 1 ? 'book' : 'books'}';
   }
 
-  Widget _buildCustomShelvesHeader(BuildContext context) {
+  Widget _buildCustomShelvesHeader(BuildContext context, ShelfTheme theme) {
     return Container(
-      color: const Color(0xFF5D3A1A),
+      color: theme.type == ShelfThemeType.minimalist ? null : theme.backgroundColor,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Row(
         children: [
@@ -135,17 +177,16 @@ class ShelvesScreen extends StatelessWidget {
             width: 4,
             height: 20,
             decoration: BoxDecoration(
-              color: AppTheme.secondaryColor,
+              color: theme.textPrimaryColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(width: 12),
           Text(
             'Custom Shelves',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.secondaryColor,
-                ),
+            style: theme.headerStyle(
+              fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+            ),
           ),
         ],
       ),
@@ -156,8 +197,10 @@ class ShelvesScreen extends StatelessWidget {
     BuildContext context,
     LendingProvider lendingProvider,
     BooksProvider booksProvider,
+    ShelfTheme theme,
   ) {
     final activeLoans = lendingProvider.activeLoans;
+    final isMinimalist = theme.type == ShelfThemeType.minimalist;
 
     // Build list of UserBooks for lent books with borrower overlay
     final lentBooks = <UserBook>[];
@@ -172,7 +215,7 @@ class ShelvesScreen extends StatelessWidget {
     }
 
     return Container(
-      color: const Color(0xFF5D3A1A), // Wood background for entire shelf
+      color: theme.backgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -189,16 +232,15 @@ class ShelvesScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Lent Out',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.secondaryColor,
-                            ),
+                        style: theme.headerStyle(
+                          fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                        ),
                       ),
                       Text(
                         _bookCountText(lentBooks.length),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.secondaryColor.withValues(alpha: 0.7),
-                            ),
+                        style: theme.bodyStyle(
+                          fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+                        ),
                       ),
                     ],
                   ),
@@ -207,131 +249,135 @@ class ShelvesScreen extends StatelessWidget {
             ),
           ),
 
-        // Top shelf
-        const WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero),
+          // Top shelf (skip for minimalist)
+          if (!isMinimalist)
+            WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero, theme: theme, seed: 'LentOut'.hashCode.abs()),
 
-        // Bookshelf with side panels and back
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left side panel
-              _buildSidePanel(isLeft: true),
+          // Bookshelf with side panels and back
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left side panel (skip for minimalist)
+                if (!isMinimalist) _buildSidePanel(isLeft: true, theme: theme, seed: 'LentOut'.hashCode.abs()),
 
-              // Back panel with books
-              Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF3D2817),
-                      Color(0xFF4A3222),
-                      Color(0xFF3D2817),
-                    ],
-                    stops: [0.0, 0.5, 1.0],
+                // Back panel with books
+                Expanded(
+                  child: Container(
+                    decoration: isMinimalist
+                        ? null
+                        : BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                theme.backPanelTopColor,
+                                theme.backPanelMiddleColor,
+                                theme.backPanelBottomColor,
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
+                    child: Column(
+                      children: [
+                        if (!isMinimalist)
+                          Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.4),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: SizedBox(
+                            height: 220,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: lentBooks.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final userBook = lentBooks[index];
+                                final borrowerName = borrowerNames[userBook.bookId] ?? '';
+                                final heroTag = 'book-shelf-lent-${userBook.bookId}';
+
+                                return Column(
+                                  children: [
+                                    Expanded(
+                                      child: BookCard(
+                                        book: userBook.book!,
+                                        heroTag: heroTag,
+                                        onTap: () => context.push('/book/${userBook.bookId}', extra: heroTag),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Borrower badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.person, size: 12, color: Colors.orange.shade700),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            borrowerName.length > 10
+                                                ? '${borrowerName.substring(0, 10)}...'
+                                                : borrowerName,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.orange.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Column(
-                  children: [
-                    Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.4),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: SizedBox(
-                        height: 220,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: lentBooks.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final userBook = lentBooks[index];
-                            final borrowerName = borrowerNames[userBook.bookId] ?? '';
-                            final heroTag = 'book-shelf-lent-${userBook.bookId}';
 
-                            return Column(
-                              children: [
-                                Expanded(
-                                  child: BookCard(
-                                    book: userBook.book!,
-                                    heroTag: heroTag,
-                                    onTap: () => context.push('/book/${userBook.bookId}', extra: heroTag),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                // Borrower badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.person, size: 12, color: Colors.orange.shade700),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        borrowerName.length > 10
-                                            ? '${borrowerName.substring(0, 10)}...'
-                                            : borrowerName,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.orange.shade700,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                // Right side panel (skip for minimalist)
+                if (!isMinimalist) _buildSidePanel(isLeft: false, theme: theme, seed: 'LentOut'.hashCode.abs() + 1),
+              ],
             ),
+          ),
 
-            // Right side panel
-            _buildSidePanel(isLeft: false),
-          ],
-        ),
-        ),
-
-        // Wooden Shelf
-        const WoodenShelfDivider(margin: EdgeInsets.zero),
-      ],
+          // Wooden Shelf
+          WoodenShelfDivider(margin: EdgeInsets.zero, theme: theme, seed: 'LentOut'.hashCode.abs() + 2),
+        ],
       ),
     );
   }
 
-  Widget _buildSidePanel({required bool isLeft}) {
+  Widget _buildSidePanel({required bool isLeft, required ShelfTheme theme, int seed = 42}) {
     return Container(
-      width: 14,
+      width: theme.sidePanelWidth,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: isLeft ? Alignment.centerRight : Alignment.centerLeft,
           end: isLeft ? Alignment.centerLeft : Alignment.centerRight,
           colors: [
-            const Color(0xFF5D3A1A), // Inner edge (darker)
-            AppTheme.primaryColor,   // Middle
-            AppTheme.secondaryColor, // Outer edge (lighter, catches light)
+            theme.sidePanelInnerColor,
+            theme.sidePanelMiddleColor,
+            theme.sidePanelOuterColor,
           ],
           stops: const [0.0, 0.4, 1.0],
         ),
@@ -344,7 +390,7 @@ class ShelvesScreen extends StatelessWidget {
         ],
       ),
       child: CustomPaint(
-        painter: WoodGrainPainter(),
+        painter: ShelfPainterFactory.getSidePanelPainter(theme, seed: seed),
       ),
     );
   }

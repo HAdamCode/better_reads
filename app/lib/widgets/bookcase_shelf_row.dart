@@ -1,8 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import '../models/shelf_theme.dart';
 import '../models/user_book.dart';
-import '../utils/theme.dart';
-import 'book_card.dart';
+import 'book_carousel.dart';
+import 'shelf_painters.dart';
 import 'wooden_shelf_divider.dart';
 
 class BookcaseShelfRow extends StatelessWidget {
@@ -16,6 +18,7 @@ class BookcaseShelfRow extends StatelessWidget {
   final VoidCallback? onAddTap;
   final bool showEmptyState;
   final Widget? emptyStateWidget;
+  final ShelfTheme? theme;
 
   const BookcaseShelfRow({
     super.key,
@@ -29,6 +32,7 @@ class BookcaseShelfRow extends StatelessWidget {
     this.onAddTap,
     this.showEmptyState = true,
     this.emptyStateWidget,
+    this.theme,
   });
 
   @override
@@ -38,8 +42,13 @@ class BookcaseShelfRow extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final currentTheme = theme ?? ShelfTheme.classicWood();
+    final isMinimalist = currentTheme.type == ShelfThemeType.minimalist;
+    // Use title hashCode as seed for unique star patterns per shelf
+    final shelfSeed = title.hashCode.abs();
+
     return Container(
-      color: const Color(0xFF5D3A1A), // Wood background for entire shelf
+      color: currentTheme.backgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -47,150 +56,141 @@ class BookcaseShelfRow extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, color: iconColor ?? AppTheme.secondaryColor, size: 22),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: GestureDetector(
-                  onTap: onTitleTap,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.secondaryColor,
-                            ),
-                      ),
-                      if (subtitle != null)
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    color: iconColor ?? currentTheme.iconColor,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onTitleTap,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          subtitle!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.secondaryColor.withValues(alpha: 0.7),
-                              ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              if (onTitleTap != null)
-                Icon(Icons.chevron_right, color: AppTheme.secondaryColor.withValues(alpha: 0.7), size: 20),
-            ],
-          ),
-        ),
-
-        // Top shelf
-        const WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero),
-
-        // Bookshelf with side panels and back
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left side panel
-              _buildSidePanel(isLeft: true),
-
-              // Back panel with books
-              Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  // Dark wood panel background
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(0xFF3D2817), // Dark wood top
-                      const Color(0xFF4A3222), // Slightly lighter middle
-                      const Color(0xFF3D2817), // Dark wood bottom
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // Top edge shadow line
-                    Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.4),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Books Row or Empty State
-                    if (books.isEmpty)
-                      _buildEmptyState(context)
-                    else
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: SizedBox(
-                          height: 200,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: books.length + (onAddTap != null ? 1 : 0),
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
-                            itemBuilder: (context, index) {
-                              // Add button at the end
-                              if (index == books.length && onAddTap != null) {
-                                return _buildAddButton(context);
-                              }
-
-                              final userBook = books[index];
-                              if (userBook.book == null) return const SizedBox.shrink();
-
-                              final heroTag = '$heroTagPrefix-${userBook.bookId}';
-                              return BookCard(
-                                book: userBook.book!,
-                                heroTag: heroTag,
-                                onTap: () => context.push('/book/${userBook.bookId}', extra: heroTag),
-                              );
-                            },
+                          title,
+                          style: currentTheme.headerStyle(
+                            fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
                           ),
                         ),
-                      ),
-                  ],
+                        if (subtitle != null)
+                          Text(
+                            subtitle!,
+                            style: currentTheme.bodyStyle(
+                              fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                if (onTitleTap != null)
+                  Icon(
+                    Icons.chevron_right,
+                    color: currentTheme.textSecondaryColor,
+                    size: 20,
+                  ),
+              ],
             ),
+          ),
 
-            // Right side panel
-            _buildSidePanel(isLeft: false),
-          ],
-        ),
-        ),
+          // Top shelf (skip for minimalist)
+          if (!isMinimalist)
+            WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero, theme: currentTheme, seed: shelfSeed),
 
-        // Wooden Shelf
-        const WoodenShelfDivider(margin: EdgeInsets.zero),
-      ],
+          // Bookshelf with side panels and back
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left side panel (skip for minimalist)
+                if (!isMinimalist) _buildSidePanel(isLeft: true, theme: currentTheme, seed: shelfSeed),
+
+                // Back panel with books
+                Expanded(
+                  child: Container(
+                    decoration: isMinimalist
+                        ? null
+                        : BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                currentTheme.backPanelTopColor,
+                                currentTheme.backPanelMiddleColor,
+                                currentTheme.backPanelBottomColor,
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
+                    child: Column(
+                      children: [
+                        // Top edge shadow line (skip for minimalist)
+                        if (!isMinimalist)
+                          Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.4),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        // Books Row or Empty State
+                        if (books.isEmpty)
+                          _buildEmptyState(context, currentTheme)
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: BookCarousel(
+                              books: books,
+                              heroTagPrefix: heroTagPrefix,
+                              trailingWidget: onAddTap != null
+                                  ? _buildAddButton(context, currentTheme)
+                                  : null,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Right side panel (skip for minimalist)
+                if (!isMinimalist) _buildSidePanel(isLeft: false, theme: currentTheme, seed: shelfSeed + 1),
+              ],
+            ),
+          ),
+
+          // Bottom Shelf
+          WoodenShelfDivider(margin: EdgeInsets.zero, theme: currentTheme, seed: shelfSeed + 2),
+        ],
       ),
     );
   }
 
-  Widget _buildSidePanel({required bool isLeft}) {
+  Widget _buildSidePanel({required bool isLeft, required ShelfTheme theme, int seed = 42}) {
     return Container(
-      width: 14,
+      width: theme.sidePanelWidth,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: isLeft ? Alignment.centerRight : Alignment.centerLeft,
           end: isLeft ? Alignment.centerLeft : Alignment.centerRight,
           colors: [
-            const Color(0xFF5D3A1A), // Inner edge (darker)
-            AppTheme.primaryColor,   // Middle
-            AppTheme.secondaryColor, // Outer edge (lighter, catches light)
+            theme.sidePanelInnerColor,
+            theme.sidePanelMiddleColor,
+            theme.sidePanelOuterColor,
           ],
           stops: const [0.0, 0.4, 1.0],
         ),
         boxShadow: [
-          // Inner shadow for depth
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 4,
@@ -199,12 +199,12 @@ class BookcaseShelfRow extends StatelessWidget {
         ],
       ),
       child: CustomPaint(
-        painter: WoodGrainPainter(),
+        painter: ShelfPainterFactory.getSidePanelPainter(theme, seed: seed),
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, ShelfTheme theme) {
     if (emptyStateWidget != null) {
       return emptyStateWidget!;
     }
@@ -215,15 +215,12 @@ class BookcaseShelfRow extends StatelessWidget {
         height: 170,
         child: Row(
           children: [
-            if (onAddTap != null) _buildAddButton(context),
+            if (onAddTap != null) _buildAddButton(context, theme),
             if (onAddTap != null) const SizedBox(width: 16),
             Expanded(
               child: Text(
                 'No books yet',
-                style: TextStyle(
-                  color: AppTheme.secondaryColor.withValues(alpha: 0.6),
-                  fontStyle: FontStyle.italic,
-                ),
+                style: theme.bodyStyle(fontStyle: FontStyle.italic),
               ),
             ),
           ],
@@ -232,91 +229,575 @@ class BookcaseShelfRow extends StatelessWidget {
     );
   }
 
-  Widget _buildAddButton(BuildContext context) {
+  Widget _buildAddButton(BuildContext context, ShelfTheme theme) {
+    final isMinimalist = theme.type == ShelfThemeType.minimalist;
+    final isFantasy = theme.type == ShelfThemeType.fantasy;
+
+    final content = Container(
+      width: 120,
+      height: 170,
+      decoration: BoxDecoration(
+        color: isMinimalist
+            ? theme.dividerMiddleColor.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(6),
+        border: isFantasy
+            ? null
+            : Border.all(
+                color: theme.textSecondaryColor.withValues(alpha: 0.3),
+                width: 2,
+                strokeAlign: BorderSide.strokeAlignInside,
+              ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: theme.textPrimaryColor.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: isFantasy
+                ? ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      theme.textPrimaryColor,
+                      BlendMode.srcIn,
+                    ),
+                    child: Image.asset(
+                      'assets/images/image.png',
+                      width: 28,
+                      height: 28,
+                    ),
+                  )
+                : Icon(
+                    Icons.add,
+                    size: 28,
+                    color: theme.textPrimaryColor,
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Add Books',
+            style: theme.bodyStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: theme.textPrimaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+
     return GestureDetector(
       onTap: onAddTap,
-      child: Container(
-        width: 120,
-        height: 170,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: AppTheme.secondaryColor.withValues(alpha: 0.3),
-            width: 2,
-            strokeAlign: BorderSide.strokeAlignInside,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryColor.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add,
-                size: 28,
-                color: AppTheme.secondaryColor,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Add Books',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.secondaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: isFantasy
+          ? CustomPaint(
+              painter: _VineBorderPainter(seed: title.hashCode),
+              child: content,
+            )
+          : content,
     );
   }
 }
 
-class WoodGrainPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
+/// Custom painter for vine border (fantasy theme) with realistic botanical details
+/// All leaves, tendrils, and branches grow FROM the main vine stem
+class _VineBorderPainter extends CustomPainter {
+  final int seed;
 
-    // Vertical grain streaks (wood grain runs vertically on side panels)
-    final grainPositions = [2.0, 5.0, 8.0, 11.0];
-    final grainColors = [
-      const Color(0xFF4A3222),
-      const Color(0xFF3D2817),
-      const Color(0xFF5D3A1A),
-      const Color(0xFF4A3222),
-    ];
+  _VineBorderPainter({this.seed = 42});
 
-    for (int i = 0; i < grainPositions.length; i++) {
-      paint.color = grainColors[i].withValues(alpha: 0.6);
-      paint.strokeWidth = 1.5;
-      paint.style = PaintingStyle.stroke;
+  // Deterministic random based on seed + index (stable across repaints)
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
 
-      // Draw slightly wavy vertical lines
-      final path = Path();
-      final x = grainPositions[i];
-      path.moveTo(x, 0);
+  // Counter for generating unique indices for each random call
+  int _randomIndex = 0;
 
-      for (double y = 0; y < size.height; y += 20) {
-        final wobble = (y % 40 < 20) ? 0.5 : -0.5;
-        path.lineTo(x + wobble, y + 20);
-      }
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
 
-      canvas.drawPath(path, paint);
-    }
+  double _vary(double base, double range) {
+    return base + (_nextRandom() - 0.5) * range;
+  }
 
-    // Add some darker vertical accent lines
-    paint.color = const Color(0xFF2D1A0A).withValues(alpha: 0.3);
-    paint.strokeWidth = 0.5;
-    canvas.drawLine(Offset(3, 0), Offset(3, size.height), paint);
-    canvas.drawLine(Offset(9, 0), Offset(9, size.height), paint);
+  // Color palette
+  static const _vineDark = Color(0xFF1A4028);
+  static const _vineColor = Color(0xFF2D5A3E);
+  static const _vineLight = Color(0xFF4A8A5E);
+  static const _leafMid = Color(0xFF3D7A4A);
+  static const _leafLight = Color(0xFF5AA868);
+  static const _shadowColor = Color(0xFF0A2010);
+  static const _leafHighlight = Color(0xFF7AC888);
+
+  // Deterministic int based on seed (for point counts)
+  int _seededInt(int index, int max) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return hash % max;
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  void paint(Canvas canvas, Size size) {
+    // Reset random counter for consistent results
+    _randomIndex = 0;
+
+    // Build the vine path and sample points along it
+    final vinePoints = _getVinePoints(size);
+
+    // Layer 1: Shadow
+    _drawShadowLayer(canvas, size);
+
+    // Layer 2: Main vine stem
+    _drawMainVine(canvas, size);
+
+    // Layer 3: Draw leaves, tendrils, buds connected to vine points
+    _drawConnectedElements(canvas, vinePoints);
+  }
+
+  /// Get points along the vine path where we can attach leaves/tendrils
+  /// All positions are randomized based on seed for unique patterns per shelf
+  List<_VinePoint> _getVinePoints(Size size) {
+    final points = <_VinePoint>[];
+
+    // Generate random points for each side based on seed
+    // Left side (5-8 points)
+    final leftCount = 5 + _seededInt(0, 4);
+    for (int i = 0; i < leftCount; i++) {
+      final progress = (i + 0.5) / leftCount; // Distribute along side
+      final jitter = _vary(0.0, 0.08); // Random offset
+      _addRandomPoint(points, size, _VineSide.left, progress + jitter, i);
+    }
+
+    // Top side (4-7 points)
+    final topCount = 4 + _seededInt(1, 4);
+    for (int i = 0; i < topCount; i++) {
+      final progress = (i + 0.5) / topCount;
+      final jitter = _vary(0.0, 0.08);
+      _addRandomPoint(points, size, _VineSide.top, progress + jitter, i);
+    }
+
+    // Right side (5-8 points)
+    final rightCount = 5 + _seededInt(2, 4);
+    for (int i = 0; i < rightCount; i++) {
+      final progress = (i + 0.5) / rightCount;
+      final jitter = _vary(0.0, 0.08);
+      _addRandomPoint(points, size, _VineSide.right, progress + jitter, i);
+    }
+
+    // Bottom side (4-7 points)
+    final bottomCount = 4 + _seededInt(3, 4);
+    for (int i = 0; i < bottomCount; i++) {
+      final progress = (i + 0.5) / bottomCount;
+      final jitter = _vary(0.0, 0.08);
+      _addRandomPoint(points, size, _VineSide.bottom, progress + jitter, i);
+    }
+
+    return points;
+  }
+
+  /// Add a single point with randomized position and angle
+  void _addRandomPoint(List<_VinePoint> points, Size size, _VineSide side, double progress, int index) {
+    progress = progress.clamp(0.05, 0.95); // Keep away from corners
+    final alternateSign = (index % 2 == 0) ? 1.0 : -1.0;
+    final sizeVariation = _vary(1.0, 0.4); // More size variation
+    final edgeOffset = _vary(5.0, 4.0); // Random distance from edge
+
+    double x, y, baseAngle;
+
+    switch (side) {
+      case _VineSide.left:
+        x = edgeOffset;
+        y = size.height * progress;
+        baseAngle = alternateSign > 0 ? _vary(0.5, 0.4) : _vary(math.pi - 0.5, 0.4);
+        break;
+      case _VineSide.right:
+        x = size.width - edgeOffset;
+        y = size.height * progress;
+        baseAngle = alternateSign > 0 ? _vary(math.pi - 0.5, 0.4) : _vary(0.5, 0.4);
+        break;
+      case _VineSide.top:
+        x = size.width * progress;
+        y = edgeOffset;
+        baseAngle = alternateSign > 0 ? _vary(math.pi / 2 + 0.3, 0.4) : _vary(-math.pi / 2 + 0.3, 0.4);
+        break;
+      case _VineSide.bottom:
+        x = size.width * progress;
+        y = size.height - edgeOffset;
+        baseAngle = alternateSign > 0 ? _vary(-math.pi / 2 - 0.3, 0.4) : _vary(math.pi / 2 - 0.3, 0.4);
+        break;
+    }
+
+    points.add(_VinePoint(x, y, baseAngle, side, sizeVariation));
+  }
+
+  void _drawShadowLayer(Canvas canvas, Size size) {
+    final shadowPaint = Paint()
+      ..color = _shadowColor.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.save();
+    canvas.translate(1.5, 1.5);
+    _drawVinePath(canvas, size, shadowPaint);
+    canvas.restore();
+  }
+
+  void _drawMainVine(Canvas canvas, Size size) {
+    final vinePaint = Paint()
+      ..color = _vineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.8
+      ..strokeCap = StrokeCap.round;
+
+    final highlightPaint = Paint()
+      ..color = _vineLight.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    _drawVinePath(canvas, size, vinePaint);
+    _drawVinePath(canvas, size, highlightPaint);
+  }
+
+  void _drawVinePath(Canvas canvas, Size size, Paint paint) {
+    final path = Path();
+
+    // Start at bottom-left, go up the left side
+    path.moveTo(4, size.height - 8);
+    path.cubicTo(
+      8, size.height * 0.78,
+      0, size.height * 0.65,
+      6, size.height * 0.52,
+    );
+    path.cubicTo(
+      10, size.height * 0.38,
+      2, size.height * 0.25,
+      7, size.height * 0.12,
+    );
+    path.cubicTo(
+      10, size.height * 0.04,
+      size.width * 0.08, 2,
+      size.width * 0.18, 4,
+    );
+
+    // Go across the top
+    path.cubicTo(
+      size.width * 0.32, 8,
+      size.width * 0.42, 2,
+      size.width * 0.55, 6,
+    );
+    path.cubicTo(
+      size.width * 0.72, 10,
+      size.width * 0.85, 3,
+      size.width - 6, size.height * 0.1,
+    );
+
+    // Go down the right side
+    path.cubicTo(
+      size.width - 2, size.height * 0.25,
+      size.width - 10, size.height * 0.38,
+      size.width - 5, size.height * 0.5,
+    );
+    path.cubicTo(
+      size.width - 1, size.height * 0.65,
+      size.width - 9, size.height * 0.78,
+      size.width - 4, size.height * 0.88,
+    );
+    path.cubicTo(
+      size.width - 2, size.height * 0.95,
+      size.width * 0.9, size.height - 3,
+      size.width * 0.82, size.height - 5,
+    );
+
+    // Go across the bottom back to start
+    path.cubicTo(
+      size.width * 0.68, size.height - 9,
+      size.width * 0.55, size.height - 2,
+      size.width * 0.42, size.height - 6,
+    );
+    path.cubicTo(
+      size.width * 0.28, size.height - 10,
+      size.width * 0.15, size.height - 3,
+      4, size.height - 8,
+    );
+
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawConnectedElements(Canvas canvas, List<_VinePoint> points) {
+    int leafIndex = 0;
+
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      final elementType = i % 3; // Alternate between leaf, tendril, small leaf
+      final sizeMult = point.sizeMultiplier;
+
+      if (elementType == 0) {
+        // Draw a leaf with petiole (stem)
+        _drawLeafFromVine(canvas, point, _vary(10, 3) * sizeMult, leafIndex % 2 == 0);
+        leafIndex++;
+      } else if (elementType == 1) {
+        // Draw a tendril
+        _drawTendrilFromVine(canvas, point, _vary(12, 4) * sizeMult);
+      } else {
+        // Draw a smaller leaf or bud
+        if (i % 5 == 0) {
+          _drawBudFromVine(canvas, point, _vary(4, 1) * sizeMult);
+        } else {
+          _drawLeafFromVine(canvas, point, _vary(7, 2) * sizeMult, leafIndex % 2 == 0);
+          leafIndex++;
+        }
+      }
+    }
+  }
+
+  /// Draw a leaf that grows FROM the vine point with a visible petiole (leaf stem)
+  void _drawLeafFromVine(Canvas canvas, _VinePoint point, double leafSize, bool isHeart) {
+    final petioleLength = leafSize * 0.5;
+    final petioleAngle = point.outwardAngle + _vary(0, 0.3);
+
+    // Calculate where the leaf attaches (end of petiole)
+    final leafX = point.x + math.cos(petioleAngle) * petioleLength;
+    final leafY = point.y + math.sin(petioleAngle) * petioleLength;
+
+    // Draw petiole (leaf stem) connecting vine to leaf
+    final petiolePaint = Paint()
+      ..color = _vineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final petiolePath = Path();
+    petiolePath.moveTo(point.x, point.y);
+    // Slight curve to the petiole
+    final midX = point.x + math.cos(petioleAngle) * petioleLength * 0.5;
+    final midY = point.y + math.sin(petioleAngle) * petioleLength * 0.5 - 2;
+    petiolePath.quadraticBezierTo(midX, midY, leafX, leafY);
+    canvas.drawPath(petiolePath, petiolePaint);
+
+    // Draw the leaf at the end of the petiole
+    if (isHeart) {
+      _drawHeartLeaf(canvas, leafX, leafY, leafSize, petioleAngle + math.pi / 2);
+    } else {
+      _drawPointedLeaf(canvas, leafX, leafY, leafSize, petioleAngle + math.pi / 2);
+    }
+  }
+
+  /// Draw a tendril that grows FROM the vine point
+  void _drawTendrilFromVine(Canvas canvas, _VinePoint point, double length) {
+    final tendrilPaint = Paint()
+      ..color = _vineLight
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    final angle = point.outwardAngle;
+    final dir = point.side == _VineSide.left || point.side == _VineSide.top ? 1.0 : -1.0;
+
+    final path = Path();
+    path.moveTo(point.x, point.y);
+
+    // First segment going outward from vine
+    final seg1X = point.x + math.cos(angle) * length * 0.4;
+    final seg1Y = point.y + math.sin(angle) * length * 0.4;
+    path.quadraticBezierTo(
+      point.x + math.cos(angle) * length * 0.2,
+      point.y + math.sin(angle) * length * 0.2 - 3,
+      seg1X, seg1Y,
+    );
+
+    // Curl back
+    final seg2X = seg1X + dir * length * 0.3;
+    final seg2Y = seg1Y + length * 0.3;
+    path.quadraticBezierTo(
+      seg1X + dir * length * 0.25,
+      seg1Y - length * 0.1,
+      seg2X, seg2Y,
+    );
+
+    // Tight spiral
+    path.quadraticBezierTo(
+      seg2X - dir * length * 0.15,
+      seg2Y + length * 0.15,
+      seg2X - dir * length * 0.05,
+      seg2Y + length * 0.08,
+    );
+
+    canvas.drawPath(path, tendrilPaint);
+  }
+
+  /// Draw a small bud FROM the vine point
+  void _drawBudFromVine(Canvas canvas, _VinePoint point, double budSize) {
+    final angle = point.outwardAngle;
+
+    // Short stem to bud
+    final stemLength = budSize * 0.8;
+    final budX = point.x + math.cos(angle) * stemLength;
+    final budY = point.y + math.sin(angle) * stemLength;
+
+    // Draw tiny stem
+    final stemPaint = Paint()
+      ..color = _vineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(point.x, point.y), Offset(budX, budY), stemPaint);
+
+    // Draw bud
+    canvas.save();
+    canvas.translate(budX, budY);
+    canvas.rotate(angle + math.pi / 2);
+
+    final budPath = Path();
+    budPath.moveTo(0, budSize * 0.3);
+    budPath.quadraticBezierTo(-budSize * 0.35, 0, -budSize * 0.15, -budSize * 0.35);
+    budPath.quadraticBezierTo(0, -budSize * 0.45, budSize * 0.12, -budSize * 0.25);
+    budPath.quadraticBezierTo(budSize * 0.15, -budSize * 0.05, 0, budSize * 0.3);
+
+    final budPaint = Paint()
+      ..color = _leafLight
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(budPath, budPaint);
+
+    final outlinePaint = Paint()
+      ..color = _vineColor.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    canvas.drawPath(budPath, outlinePaint);
+
+    canvas.restore();
+  }
+
+  void _drawHeartLeaf(Canvas canvas, double x, double y, double leafSize, double angle) {
+    canvas.save();
+    canvas.translate(x, y);
+    canvas.rotate(angle);
+
+    final lobeDepth = _vary(0.45, 0.08);
+
+    final leafPath = Path();
+    leafPath.moveTo(0, leafSize * 0.45);
+    leafPath.cubicTo(
+      -leafSize * lobeDepth, leafSize * 0.15,
+      -leafSize * lobeDepth, -leafSize * 0.25,
+      0, -leafSize * 0.12,
+    );
+    leafPath.cubicTo(
+      leafSize * lobeDepth, -leafSize * 0.25,
+      leafSize * lobeDepth, leafSize * 0.15,
+      0, leafSize * 0.45,
+    );
+
+    // Shadow
+    canvas.save();
+    canvas.translate(1, 1);
+    final shadowPaint = Paint()
+      ..color = _shadowColor.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(leafPath, shadowPaint);
+    canvas.restore();
+
+    // Leaf fill
+    final leafPaint = Paint()
+      ..color = _leafMid
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(leafPath, leafPaint);
+
+    // Outline
+    final outlinePaint = Paint()
+      ..color = _vineDark.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    canvas.drawPath(leafPath, outlinePaint);
+
+    // Central vein
+    final veinPaint = Paint()
+      ..color = _vineDark.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(0, leafSize * 0.4), Offset(0, -leafSize * 0.05), veinPaint);
+
+    // Highlight
+    final highlightPaint = Paint()
+      ..color = _leafHighlight.withValues(alpha: 0.25)
+      ..style = PaintingStyle.fill;
+    final highlightPath = Path();
+    highlightPath.addOval(Rect.fromCenter(
+      center: Offset(-leafSize * 0.12, leafSize * 0.05),
+      width: leafSize * 0.25,
+      height: leafSize * 0.35,
+    ));
+    canvas.drawPath(highlightPath, highlightPaint);
+
+    canvas.restore();
+  }
+
+  void _drawPointedLeaf(Canvas canvas, double x, double y, double leafSize, double angle) {
+    canvas.save();
+    canvas.translate(x, y);
+    canvas.rotate(angle);
+
+    final width = _vary(0.32, 0.06);
+
+    final leafPath = Path();
+    leafPath.moveTo(0, leafSize * 0.45);
+    leafPath.quadraticBezierTo(-leafSize * width, leafSize * 0.08, -leafSize * 0.12, -leafSize * 0.35);
+    leafPath.quadraticBezierTo(0, -leafSize * 0.55, leafSize * 0.12, -leafSize * 0.35);
+    leafPath.quadraticBezierTo(leafSize * width, leafSize * 0.08, 0, leafSize * 0.45);
+
+    // Shadow
+    canvas.save();
+    canvas.translate(0.8, 0.8);
+    final shadowPaint = Paint()
+      ..color = _shadowColor.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(leafPath, shadowPaint);
+    canvas.restore();
+
+    // Leaf fill
+    final leafPaint = Paint()
+      ..color = _leafMid
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(leafPath, leafPaint);
+
+    // Outline
+    final outlinePaint = Paint()
+      ..color = _vineDark.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    canvas.drawPath(leafPath, outlinePaint);
+
+    // Central vein
+    final veinPaint = Paint()
+      ..color = _vineDark.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(0, leafSize * 0.38), Offset(0, -leafSize * 0.3), veinPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _VineBorderPainter oldDelegate) =>
+      oldDelegate.seed != seed;
 }
+
+/// Represents a point on the vine where elements can attach
+class _VinePoint {
+  final double x;
+  final double y;
+  final double outwardAngle; // Angle pointing away from the vine (for leaf/tendril direction)
+  final _VineSide side;
+  final double sizeMultiplier; // Random size variation (0.7-1.3)
+
+  _VinePoint(this.x, this.y, this.outwardAngle, this.side, [this.sizeMultiplier = 1.0]);
+}
+
+enum _VineSide { left, top, right, bottom }
