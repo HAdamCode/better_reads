@@ -82,6 +82,9 @@ class BookcaseShelfRow extends StatelessWidget {
           ),
         ),
 
+        // Top shelf
+        const WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero),
+
         // Bookshelf with side panels and back
         IntrinsicHeight(
           child: Row(
@@ -195,6 +198,9 @@ class BookcaseShelfRow extends StatelessWidget {
           ),
         ],
       ),
+      child: CustomPaint(
+        painter: WoodGrainPainter(),
+      ),
     );
   }
 
@@ -270,4 +276,47 @@ class BookcaseShelfRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class WoodGrainPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+
+    // Vertical grain streaks (wood grain runs vertically on side panels)
+    final grainPositions = [2.0, 5.0, 8.0, 11.0];
+    final grainColors = [
+      const Color(0xFF4A3222),
+      const Color(0xFF3D2817),
+      const Color(0xFF5D3A1A),
+      const Color(0xFF4A3222),
+    ];
+
+    for (int i = 0; i < grainPositions.length; i++) {
+      paint.color = grainColors[i].withValues(alpha: 0.6);
+      paint.strokeWidth = 1.5;
+      paint.style = PaintingStyle.stroke;
+
+      // Draw slightly wavy vertical lines
+      final path = Path();
+      final x = grainPositions[i];
+      path.moveTo(x, 0);
+
+      for (double y = 0; y < size.height; y += 20) {
+        final wobble = (y % 40 < 20) ? 0.5 : -0.5;
+        path.lineTo(x + wobble, y + 20);
+      }
+
+      canvas.drawPath(path, paint);
+    }
+
+    // Add some darker vertical accent lines
+    paint.color = const Color(0xFF2D1A0A).withValues(alpha: 0.3);
+    paint.strokeWidth = 0.5;
+    canvas.drawLine(Offset(3, 0), Offset(3, size.height), paint);
+    canvas.drawLine(Offset(9, 0), Offset(9, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

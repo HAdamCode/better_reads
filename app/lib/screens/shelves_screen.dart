@@ -207,6 +207,9 @@ class ShelvesScreen extends StatelessWidget {
             ),
           ),
 
+        // Top shelf
+        const WoodenShelfDivider(isTop: true, margin: EdgeInsets.zero),
+
         // Bookshelf with side panels and back
         IntrinsicHeight(
           child: Row(
@@ -339,6 +342,9 @@ class ShelvesScreen extends StatelessWidget {
             offset: Offset(isLeft ? 2 : -2, 0),
           ),
         ],
+      ),
+      child: CustomPaint(
+        painter: WoodGrainPainter(),
       ),
     );
   }
