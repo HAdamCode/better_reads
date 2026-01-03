@@ -91,30 +91,31 @@ class ShelfTheme {
   factory ShelfTheme.classicWood() => const ShelfTheme(
         type: ShelfThemeType.classicWood,
         name: 'Classic Wood',
-        description: 'Warm wooden bookshelf',
-        backgroundColor: Color(0xFF5D3A1A),
-        backPanelTopColor: Color(0xFF3D2817),
-        backPanelMiddleColor: Color(0xFF4A3222),
-        backPanelBottomColor: Color(0xFF3D2817),
-        sidePanelInnerColor: Color(0xFF5D3A1A),
-        sidePanelMiddleColor: Color(0xFF8B4513), // AppTheme.primaryColor
-        sidePanelOuterColor: Color(0xFFD4A574), // AppTheme.secondaryColor
-        dividerDarkColor: Color(0xFF8B4513),
-        dividerMiddleColor: Color(0xFFD4A574),
-        dividerLightColor: Color(0xFFE8D4B8),
-        textPrimaryColor: Color(0xFFD4A574),
-        textSecondaryColor: Color(0xB3D4A574), // 70% opacity
+        description: 'Rustic library bookshelf',
+        backgroundColor: Color(0xFF4A2E1C), // Deeper, richer brown
+        backPanelTopColor: Color(0xFF2D1A10), // Darker shadow at top
+        backPanelMiddleColor: Color(0xFF3D2517), // Rich walnut center
+        backPanelBottomColor: Color(0xFF2D1A10), // Darker at bottom
+        sidePanelInnerColor: Color(0xFF3D2517), // Deep inner shadow
+        sidePanelMiddleColor: Color(0xFF6B4423), // Warm mahogany
+        sidePanelOuterColor: Color(0xFFB8875A), // Honey oak edge
+        dividerDarkColor: Color(0xFF5C3A22), // Rich shelf dark
+        dividerMiddleColor: Color(0xFF8B5A3C), // Warm shelf body
+        dividerLightColor: Color(0xFFD4A574), // Polished highlight
+        textPrimaryColor: Color(0xFFE8D4B8), // Warm cream text
+        textSecondaryColor: Color(0xB3D4A574), // 70% opacity amber
         iconColor: Color(0xFFD4A574),
-        sidePanelWidth: 14,
-        dividerHeight: 14,
+        sidePanelWidth: 16, // Slightly thicker for more presence
+        dividerHeight: 16, // Thicker shelves for rustic feel
         textureType: ShelfTextureType.woodGrain,
         grainColors: [
-          Color(0xFF4A3222),
-          Color(0xFF3D2817),
-          Color(0xFF5D3A1A),
-          Color(0xFF4A3222),
+          Color(0xFF3D2517), // Deep walnut
+          Color(0xFF4A2E1C), // Rich brown
+          Color(0xFF5C3A22), // Warm mahogany
+          Color(0xFF4A3222), // Medium brown
+          Color(0xFF6B4423), // Amber brown
         ],
-        grainHighlightColor: Color(0xFFE8D4B8),
+        grainHighlightColor: Color(0xFFD4A574), // Warm honey highlight
       );
 
   factory ShelfTheme.fantasy() => const ShelfTheme(
