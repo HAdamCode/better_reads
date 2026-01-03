@@ -130,40 +130,30 @@ class ShelvesScreen extends StatelessWidget {
           ),
           floatingActionButton: theme.type == ShelfThemeType.pride
               ? _buildPrideFab(context)
-              : FloatingActionButton(
-                  onPressed: () => CreateShelfDialog.show(context),
-                  tooltip: 'Create Shelf',
-                  elevation: 8,
-                  backgroundColor: theme.type == ShelfThemeType.romance
-                      ? theme.backgroundColor // Deep burgundy for Romance
-                      : theme.dividerLightColor,
-                  foregroundColor: theme.type == ShelfThemeType.minimalist
-                      ? theme.textPrimaryColor
-                      : theme.type == ShelfThemeType.romance
-                          ? theme.iconColor // Gold for Romance
-                          : theme.sidePanelMiddleColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: theme.type == ShelfThemeType.romance
-                          ? theme.iconColor // Gold border for Romance
-                          : theme.sidePanelMiddleColor,
-                      width: 2,
-                    ),
-                  ),
-                  child: theme.type == ShelfThemeType.fantasy
-                      ? ColorFiltered(
-                          colorFilter: ColorFilter.mode(
-                            theme.textPrimaryColor, // Gold
-                            BlendMode.srcIn,
-                          ),
-                          child: Image.asset(
-                            'assets/images/image.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                        )
-                      : theme.type == ShelfThemeType.romance
+              : theme.type == ShelfThemeType.fantasy
+                  ? _buildFantasyFab(context, theme)
+                  : FloatingActionButton(
+                      onPressed: () => CreateShelfDialog.show(context),
+                      tooltip: 'Create Shelf',
+                      elevation: 8,
+                      backgroundColor: theme.type == ShelfThemeType.romance
+                          ? theme.backgroundColor // Deep burgundy for Romance
+                          : theme.dividerLightColor,
+                      foregroundColor: theme.type == ShelfThemeType.minimalist
+                          ? theme.textPrimaryColor
+                          : theme.type == ShelfThemeType.romance
+                              ? theme.iconColor // Gold for Romance
+                              : theme.sidePanelMiddleColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: theme.type == ShelfThemeType.romance
+                              ? theme.iconColor // Gold border for Romance
+                              : theme.sidePanelMiddleColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: theme.type == ShelfThemeType.romance
                           ? ColorFiltered(
                               colorFilter: ColorFilter.mode(
                                 theme.iconColor, // Gold rose
@@ -176,7 +166,7 @@ class ShelvesScreen extends StatelessWidget {
                               ),
                             )
                           : const Icon(Icons.add),
-                ),
+                    ),
         );
       },
     );
@@ -420,6 +410,50 @@ class ShelvesScreen extends StatelessWidget {
             Icons.favorite,
             color: Colors.white,
             size: 28,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFantasyFab(BuildContext context, ShelfTheme theme) {
+    return GestureDetector(
+      onTap: () => CreateShelfDialog.show(context),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: theme.backgroundColor, // Deep purple stone
+          border: Border.all(
+            color: theme.textPrimaryColor, // Gold border
+            width: 2,
+          ),
+          boxShadow: [
+            // Magical purple glow
+            BoxShadow(
+              color: theme.accentGlowColor?.withValues(alpha: 0.5) ?? const Color(0xFF7B68EE).withValues(alpha: 0.5),
+              blurRadius: 16,
+              spreadRadius: 2,
+            ),
+            // Gold inner glow
+            BoxShadow(
+              color: theme.textPrimaryColor.withValues(alpha: 0.3),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: Center(
+          child: ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              theme.textPrimaryColor, // Gold
+              BlendMode.srcIn,
+            ),
+            child: Image.asset(
+              'assets/images/image.png',
+              width: 32,
+              height: 32,
+            ),
           ),
         ),
       ),

@@ -266,30 +266,30 @@ class BookcaseShelfRow extends StatelessWidget {
                     height: 72,
                   ),
                 )
-              : Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.textPrimaryColor.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: isFantasy
-                      ? ColorFiltered(
-                          colorFilter: ColorFilter.mode(
-                            theme.textPrimaryColor,
-                            BlendMode.srcIn,
-                          ),
-                          child: Image.asset(
-                            'assets/images/image.png',
-                            width: 28,
-                            height: 28,
-                          ),
-                        )
-                      : Icon(
-                          Icons.add,
-                          size: 28,
-                          color: theme.textPrimaryColor,
-                        ),
-                ),
+              : isFantasy
+                  ? ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        theme.textPrimaryColor, // Gold
+                        BlendMode.srcIn,
+                      ),
+                      child: Image.asset(
+                        'assets/images/image.png',
+                        width: 64,
+                        height: 64,
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.textPrimaryColor.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        size: 28,
+                        color: theme.textPrimaryColor,
+                      ),
+                    ),
           const SizedBox(height: 10),
           Text(
             'Add Books',
@@ -820,6 +820,328 @@ class _VinePoint {
 }
 
 enum _VineSide { left, top, right, bottom }
+
+/// Custom painter for magical rune border (fantasy theme)
+/// Ancient stone with glowing runes, magical sparkles, and mystical aura
+class _MagicRuneBorderPainter extends CustomPainter {
+  final int seed;
+
+  _MagicRuneBorderPainter({this.seed = 42});
+
+  // Fantasy color palette
+  static const _stoneDeep = Color(0xFF1A1620);
+  static const _stoneMid = Color(0xFF2D2438);
+  static const _stoneLight = Color(0xFF4A3F5C);
+  static const _gold = Color(0xFFD4AF37);
+  static const _magicGlow = Color(0xFF7B68EE);
+  static const _starlight = Color(0xFFE8F4FF);
+
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
+
+  int _randomIndex = 0;
+
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _randomIndex = 0;
+
+    // Layer 1: Outer magical glow
+    _drawMagicalGlow(canvas, size);
+
+    // Layer 2: Stone border
+    _drawStoneBorder(canvas, size);
+
+    // Layer 3: Glowing runes
+    _drawGlowingRunes(canvas, size);
+
+    // Layer 4: Corner magical flourishes
+    _drawCornerFlourishes(canvas, size);
+
+    // Layer 5: Magical sparkles
+    _drawSparkles(canvas, size);
+  }
+
+  void _drawMagicalGlow(Canvas canvas, Size size) {
+    // Outer glow
+    final glowPaint = Paint()
+      ..color = _magicGlow.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    final path = _createBorderPath(size, 0);
+    canvas.drawPath(path, glowPaint);
+
+    // Inner glow
+    glowPaint.color = _gold.withValues(alpha: 0.1);
+    glowPaint.strokeWidth = 4.0;
+    canvas.drawPath(path, glowPaint);
+  }
+
+  void _drawStoneBorder(Canvas canvas, Size size) {
+    // Main stone border
+    final stonePaint = Paint()
+      ..color = _stoneMid
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = _createBorderPath(size, 0);
+    canvas.drawPath(path, stonePaint);
+
+    // Stone highlight (inner edge)
+    final highlightPaint = Paint()
+      ..color = _stoneLight.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final innerPath = _createBorderPath(size, 2);
+    canvas.drawPath(innerPath, highlightPaint);
+
+    // Stone shadow (outer edge)
+    final shadowPaint = Paint()
+      ..color = _stoneDeep.withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final outerPath = _createBorderPath(size, -1);
+    canvas.drawPath(outerPath, shadowPaint);
+  }
+
+  Path _createBorderPath(Size size, double inset) {
+    final path = Path();
+    final cornerRadius = 8.0;
+
+    path.moveTo(inset + cornerRadius, inset + 4);
+    path.lineTo(size.width - inset - cornerRadius, inset + 4);
+    path.quadraticBezierTo(
+      size.width - inset - 2, inset + 2,
+      size.width - inset - 4, inset + cornerRadius,
+    );
+    path.lineTo(size.width - inset - 4, size.height - inset - cornerRadius);
+    path.quadraticBezierTo(
+      size.width - inset - 2, size.height - inset - 2,
+      size.width - inset - cornerRadius, size.height - inset - 4,
+    );
+    path.lineTo(inset + cornerRadius, size.height - inset - 4);
+    path.quadraticBezierTo(
+      inset + 2, size.height - inset - 2,
+      inset + 4, size.height - inset - cornerRadius,
+    );
+    path.lineTo(inset + 4, inset + cornerRadius);
+    path.quadraticBezierTo(
+      inset + 2, inset + 2,
+      inset + cornerRadius, inset + 4,
+    );
+
+    return path;
+  }
+
+  void _drawGlowingRunes(Canvas canvas, Size size) {
+    // Draw runes along each edge
+    final runePositions = <Offset>[];
+
+    // Top edge runes
+    for (double x = 25; x < size.width - 25; x += 35 + _nextRandom() * 15) {
+      runePositions.add(Offset(x, 6));
+    }
+
+    // Bottom edge runes
+    for (double x = 30; x < size.width - 30; x += 35 + _nextRandom() * 15) {
+      runePositions.add(Offset(x, size.height - 6));
+    }
+
+    // Left edge runes
+    for (double y = 30; y < size.height - 30; y += 30 + _nextRandom() * 15) {
+      runePositions.add(Offset(6, y));
+    }
+
+    // Right edge runes
+    for (double y = 35; y < size.height - 35; y += 30 + _nextRandom() * 15) {
+      runePositions.add(Offset(size.width - 6, y));
+    }
+
+    for (final pos in runePositions) {
+      _drawRune(canvas, pos);
+    }
+  }
+
+  void _drawRune(Canvas canvas, Offset center) {
+    final runeType = (_nextRandom() * 5).floor();
+    final runeSize = 5 + _nextRandom() * 3;
+
+    // Glow behind rune
+    final glowPaint = Paint()
+      ..color = _gold.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(center, runeSize * 0.8, glowPaint);
+
+    // Rune stroke
+    final runePaint = Paint()
+      ..color = _gold.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+
+    switch (runeType) {
+      case 0: // Diamond
+        path.moveTo(center.dx, center.dy - runeSize * 0.5);
+        path.lineTo(center.dx + runeSize * 0.35, center.dy);
+        path.lineTo(center.dx, center.dy + runeSize * 0.5);
+        path.lineTo(center.dx - runeSize * 0.35, center.dy);
+        path.close();
+        break;
+      case 1: // Cross
+        path.moveTo(center.dx, center.dy - runeSize * 0.5);
+        path.lineTo(center.dx, center.dy + runeSize * 0.5);
+        path.moveTo(center.dx - runeSize * 0.35, center.dy);
+        path.lineTo(center.dx + runeSize * 0.35, center.dy);
+        break;
+      case 2: // Triangle
+        path.moveTo(center.dx, center.dy - runeSize * 0.5);
+        path.lineTo(center.dx + runeSize * 0.4, center.dy + runeSize * 0.35);
+        path.lineTo(center.dx - runeSize * 0.4, center.dy + runeSize * 0.35);
+        path.close();
+        break;
+      case 3: // Circle with dot
+        canvas.drawCircle(center, runeSize * 0.35, runePaint);
+        final dotPaint = Paint()
+          ..color = _gold.withValues(alpha: 0.9)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(center, runeSize * 0.1, dotPaint);
+        return;
+      case 4: // Chevron
+        path.moveTo(center.dx - runeSize * 0.35, center.dy - runeSize * 0.2);
+        path.lineTo(center.dx, center.dy - runeSize * 0.5);
+        path.lineTo(center.dx + runeSize * 0.35, center.dy - runeSize * 0.2);
+        path.moveTo(center.dx - runeSize * 0.35, center.dy + runeSize * 0.15);
+        path.lineTo(center.dx, center.dy - runeSize * 0.15);
+        path.lineTo(center.dx + runeSize * 0.35, center.dy + runeSize * 0.15);
+        break;
+    }
+
+    canvas.drawPath(path, runePaint);
+  }
+
+  void _drawCornerFlourishes(Canvas canvas, Size size) {
+    final flourishPaint = Paint()
+      ..color = _gold.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    // Top-left corner
+    _drawCornerSwirl(canvas, Offset(12, 12), flourishPaint, 1, 1);
+
+    // Top-right corner
+    _drawCornerSwirl(canvas, Offset(size.width - 12, 12), flourishPaint, -1, 1);
+
+    // Bottom-left corner
+    _drawCornerSwirl(canvas, Offset(12, size.height - 12), flourishPaint, 1, -1);
+
+    // Bottom-right corner
+    _drawCornerSwirl(canvas, Offset(size.width - 12, size.height - 12), flourishPaint, -1, -1);
+  }
+
+  void _drawCornerSwirl(Canvas canvas, Offset center, Paint paint, double xDir, double yDir) {
+    final path = Path();
+    path.moveTo(center.dx, center.dy);
+    path.quadraticBezierTo(
+      center.dx + xDir * 8, center.dy,
+      center.dx + xDir * 10, center.dy + yDir * 6,
+    );
+    path.quadraticBezierTo(
+      center.dx + xDir * 8, center.dy + yDir * 10,
+      center.dx + xDir * 4, center.dy + yDir * 8,
+    );
+    canvas.drawPath(path, paint);
+
+    // Glowing dot at center
+    final dotPaint = Paint()
+      ..color = _gold.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 2.5, dotPaint);
+
+    // Outer glow
+    final glowPaint = Paint()
+      ..color = _magicGlow.withValues(alpha: 0.4)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawCircle(center, 4, glowPaint);
+  }
+
+  void _drawSparkles(Canvas canvas, Size size) {
+    // Draw magical sparkles/stars around the border
+    for (int i = 0; i < 12; i++) {
+      final edge = i % 4;
+      double x, y;
+
+      switch (edge) {
+        case 0: // Top
+          x = 15 + _nextRandom() * (size.width - 30);
+          y = 2 + _nextRandom() * 8;
+          break;
+        case 1: // Right
+          x = size.width - 10 + _nextRandom() * 8;
+          y = 15 + _nextRandom() * (size.height - 30);
+          break;
+        case 2: // Bottom
+          x = 15 + _nextRandom() * (size.width - 30);
+          y = size.height - 10 + _nextRandom() * 8;
+          break;
+        default: // Left
+          x = 2 + _nextRandom() * 8;
+          y = 15 + _nextRandom() * (size.height - 30);
+      }
+
+      _drawSparkle(canvas, Offset(x, y), 1.5 + _nextRandom() * 2);
+    }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double size) {
+    // Outer glow
+    final glowPaint = Paint()
+      ..color = _starlight.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, size * 1.5, glowPaint);
+
+    // Core
+    final corePaint = Paint()
+      ..color = _starlight.withValues(alpha: 0.9)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, size * 0.4, corePaint);
+
+    // Star rays
+    final rayPaint = Paint()
+      ..color = _starlight.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+
+    for (int i = 0; i < 4; i++) {
+      final angle = i * (math.pi / 2);
+      canvas.drawLine(
+        Offset(center.dx + math.cos(angle) * size * 0.5, center.dy + math.sin(angle) * size * 0.5),
+        Offset(center.dx + math.cos(angle) * size * 1.2, center.dy + math.sin(angle) * size * 1.2),
+        rayPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MagicRuneBorderPainter oldDelegate) =>
+      oldDelegate.seed != seed;
+}
 
 /// Custom painter for ornate rose border (romance theme)
 /// Beauty and the Beast / Bridgerton aesthetic with baroque scrollwork and roses
