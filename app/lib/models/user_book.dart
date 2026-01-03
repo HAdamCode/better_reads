@@ -1,52 +1,63 @@
 import 'book.dart';
 
-enum Shelf {
+enum ReadingStatus {
   wantToRead,
   currentlyReading,
   read,
+  none, // For books only on custom shelves
 }
 
-extension ShelfExtension on Shelf {
+extension ReadingStatusExtension on ReadingStatus {
   String get displayName {
     switch (this) {
-      case Shelf.wantToRead:
+      case ReadingStatus.wantToRead:
         return 'Want to Read';
-      case Shelf.currentlyReading:
+      case ReadingStatus.currentlyReading:
         return 'Currently Reading';
-      case Shelf.read:
+      case ReadingStatus.read:
         return 'Read';
+      case ReadingStatus.none:
+        return 'Not Started';
     }
   }
 
   String get apiValue {
     switch (this) {
-      case Shelf.wantToRead:
+      case ReadingStatus.wantToRead:
         return 'WANT_TO_READ';
-      case Shelf.currentlyReading:
+      case ReadingStatus.currentlyReading:
         return 'CURRENTLY_READING';
-      case Shelf.read:
+      case ReadingStatus.read:
         return 'READ';
+      case ReadingStatus.none:
+        return 'NONE';
     }
   }
 
-  static Shelf fromApiValue(String value) {
+  static ReadingStatus fromApiValue(String value) {
     switch (value) {
       case 'WANT_TO_READ':
-        return Shelf.wantToRead;
+        return ReadingStatus.wantToRead;
       case 'CURRENTLY_READING':
-        return Shelf.currentlyReading;
+        return ReadingStatus.currentlyReading;
       case 'READ':
-        return Shelf.read;
+        return ReadingStatus.read;
+      case 'NONE':
+        return ReadingStatus.none;
       default:
-        return Shelf.wantToRead;
+        return ReadingStatus.wantToRead;
     }
   }
 }
 
+// Keep old Shelf enum as alias for backward compatibility during migration
+typedef Shelf = ReadingStatus;
+
 class UserBook {
   final String userId;
   final String bookId;
-  final Shelf shelf;
+  final ReadingStatus readingStatus;
+  final List<String> customShelfIds;
   final int? rating;
   final DateTime? startedAt;
   final DateTime? finishedAt;
@@ -58,7 +69,8 @@ class UserBook {
   UserBook({
     required this.userId,
     required this.bookId,
-    required this.shelf,
+    required this.readingStatus,
+    this.customShelfIds = const [],
     this.rating,
     this.startedAt,
     this.finishedAt,
@@ -68,11 +80,25 @@ class UserBook {
     this.book,
   });
 
+  // Legacy getter for backward compatibility
+  ReadingStatus get shelf => readingStatus;
+
   factory UserBook.fromJson(Map<String, dynamic> json) {
+    // Handle migration from old 'shelf' field to new 'readingStatus'
+    final statusValue = json['readingStatus'] as String? ??
+                        json['shelf'] as String? ??
+                        'WANT_TO_READ';
+
+    // Parse customShelfIds, defaulting to empty list
+    final shelfIds = (json['customShelfIds'] as List<dynamic>?)
+        ?.map((e) => e as String)
+        .toList() ?? [];
+
     return UserBook(
       userId: json['userId'] as String,
       bookId: json['bookId'] as String,
-      shelf: ShelfExtension.fromApiValue(json['shelf'] as String),
+      readingStatus: ReadingStatusExtension.fromApiValue(statusValue),
+      customShelfIds: shelfIds,
       rating: json['rating'] as int?,
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
@@ -93,7 +119,8 @@ class UserBook {
     return {
       'userId': userId,
       'bookId': bookId,
-      'shelf': shelf.apiValue,
+      'readingStatus': readingStatus.apiValue,
+      'customShelfIds': customShelfIds,
       'rating': rating,
       'startedAt': startedAt?.toIso8601String(),
       'finishedAt': finishedAt?.toIso8601String(),
@@ -107,7 +134,8 @@ class UserBook {
   UserBook copyWith({
     String? userId,
     String? bookId,
-    Shelf? shelf,
+    ReadingStatus? readingStatus,
+    List<String>? customShelfIds,
     int? rating,
     DateTime? startedAt,
     DateTime? finishedAt,
@@ -119,7 +147,8 @@ class UserBook {
     return UserBook(
       userId: userId ?? this.userId,
       bookId: bookId ?? this.bookId,
-      shelf: shelf ?? this.shelf,
+      readingStatus: readingStatus ?? this.readingStatus,
+      customShelfIds: customShelfIds ?? this.customShelfIds,
       rating: rating ?? this.rating,
       startedAt: startedAt ?? this.startedAt,
       finishedAt: finishedAt ?? this.finishedAt,
@@ -129,4 +158,10 @@ class UserBook {
       book: book ?? this.book,
     );
   }
+
+  /// Check if book is on a specific custom shelf
+  bool isOnCustomShelf(String shelfId) => customShelfIds.contains(shelfId);
+
+  /// Check if book has any reading status set
+  bool get hasReadingStatus => readingStatus != ReadingStatus.none;
 }

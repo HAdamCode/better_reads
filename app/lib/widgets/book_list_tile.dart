@@ -7,6 +7,7 @@ class BookListTile extends StatelessWidget {
   final VoidCallback? onTap;
   final String? subtitle;
   final Widget? trailing;
+  final String? heroTag;
 
   const BookListTile({
     super.key,
@@ -14,6 +15,7 @@ class BookListTile extends StatelessWidget {
     this.onTap,
     this.subtitle,
     this.trailing,
+    this.heroTag,
   });
 
   @override
@@ -22,7 +24,7 @@ class BookListTile extends StatelessWidget {
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Hero(
-        tag: 'book-${book.isbn}',
+        tag: heroTag ?? 'book-tile-${book.isbn}',
         child: ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: _buildCover(),

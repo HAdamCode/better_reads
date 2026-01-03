@@ -70,7 +70,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _searchController,
               focusNode: _focusNode,
-              autofocus: true,
+              autofocus: false,
               decoration: InputDecoration(
                 hintText: 'Search by title, author, or ISBN...',
                 prefixIcon: const Icon(Icons.search),
@@ -171,9 +171,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final book = provider.searchResults[index];
+                    final heroTag = 'book-search-$index-${book.isbn}';
                     return BookListTile(
                       book: book,
-                      onTap: () => context.push('/book/${book.isbn}'),
+                      heroTag: heroTag,
+                      onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
                       trailing: _buildShelfIndicator(provider, book.isbn),
                     );
                   },
@@ -231,6 +233,8 @@ class _SearchScreenState extends State<SearchScreen> {
       case Shelf.read:
         icon = Icons.check_circle;
         color = Colors.green;
+      case Shelf.none:
+        return null;
     }
 
     return Icon(icon, color: color, size: 20);

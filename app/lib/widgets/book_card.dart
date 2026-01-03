@@ -8,6 +8,7 @@ class BookCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double width;
   final double height;
+  final String? heroTag;
 
   const BookCard({
     super.key,
@@ -15,6 +16,7 @@ class BookCard extends StatelessWidget {
     this.onTap,
     this.width = 120,
     this.height = 200,
+    this.heroTag,
   });
 
   @override
@@ -31,7 +33,7 @@ class BookCard extends StatelessWidget {
             Expanded(
               flex: 3,
               child: Hero(
-                tag: 'book-${book.isbn}',
+                tag: heroTag ?? 'book-card-${book.isbn}',
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),

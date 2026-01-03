@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
@@ -8,6 +9,7 @@ import 'amplifyconfiguration.dart';
 
 import 'providers/auth_provider.dart' as app_auth;
 import 'providers/books_provider.dart';
+import 'providers/shelves_provider.dart';
 import 'router.dart';
 import 'utils/theme.dart';
 
@@ -15,7 +17,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
   await _configureAmplify();
-  runApp(const BetterReadsApp());
+
+  // Check auth status before starting the app
+  final isAuthenticated = await _checkInitialAuthStatus();
+
+  runApp(BetterReadsApp(initiallyAuthenticated: isAuthenticated));
 }
 
 Future<void> _configureAmplify() async {
@@ -32,29 +38,70 @@ Future<void> _configureAmplify() async {
   }
 }
 
-class BetterReadsApp extends StatelessWidget {
-  const BetterReadsApp({super.key});
+Future<bool> _checkInitialAuthStatus() async {
+  try {
+    final session = await Amplify.Auth.fetchAuthSession();
+    return session.isSignedIn;
+  } catch (e) {
+    return false;
+  }
+}
+
+class BetterReadsApp extends StatefulWidget {
+  final bool initiallyAuthenticated;
+
+  const BetterReadsApp({super.key, required this.initiallyAuthenticated});
+
+  @override
+  State<BetterReadsApp> createState() => _BetterReadsAppState();
+}
+
+class _BetterReadsAppState extends State<BetterReadsApp> {
+  late final app_auth.AuthProvider _authProvider;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _authProvider = app_auth.AuthProvider();
+    _router = createRouter(_authProvider, widget.initiallyAuthenticated);
+
+    // Listen for auth changes to navigate
+    _authProvider.addListener(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged() {
+    // Navigate based on new auth state
+    if (_authProvider.isAuthenticated) {
+      _router.go('/');
+    } else if (_authProvider.status == app_auth.AuthStatus.unauthenticated) {
+      _router.go('/sign-in');
+    }
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthStateChanged);
+    _authProvider.dispose();
+    _router.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => app_auth.AuthProvider()),
+        ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider(create: (_) => BooksProvider()),
+        ChangeNotifierProvider(create: (_) => ShelvesProvider()),
       ],
-      child: Consumer<app_auth.AuthProvider>(
-        builder: (context, authProvider, _) {
-          final router = createRouter(authProvider);
-
-          return MaterialApp.router(
-            title: 'Better Reads',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: ThemeMode.system,
-            routerConfig: router,
-          );
-        },
+      child: MaterialApp.router(
+        title: 'Better Reads',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        routerConfig: _router,
       ),
     );
   }

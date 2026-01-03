@@ -26,17 +26,17 @@ class BooksProvider extends ChangeNotifier {
   String? get trendingError => _trendingError;
 
   List<UserBook> get wantToReadBooks => _userBooks.values
-      .where((ub) => ub.shelf == Shelf.wantToRead)
+      .where((ub) => ub.readingStatus == ReadingStatus.wantToRead)
       .toList()
     ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
 
   List<UserBook> get currentlyReadingBooks => _userBooks.values
-      .where((ub) => ub.shelf == Shelf.currentlyReading)
+      .where((ub) => ub.readingStatus == ReadingStatus.currentlyReading)
       .toList()
     ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
 
   List<UserBook> get readBooks =>
-      _userBooks.values.where((ub) => ub.shelf == Shelf.read).toList()
+      _userBooks.values.where((ub) => ub.readingStatus == ReadingStatus.read).toList()
         ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
 
   int get totalBooksRead => readBooks.length;
@@ -45,7 +45,13 @@ class BooksProvider extends ChangeNotifier {
 
   bool isBookOnShelf(String bookId) => _userBooks.containsKey(bookId);
 
-  Shelf? getBookShelf(String bookId) => _userBooks[bookId]?.shelf;
+  ReadingStatus? getBookShelf(String bookId) => _userBooks[bookId]?.readingStatus;
+
+  /// Get all books on a specific custom shelf
+  List<UserBook> getBooksOnCustomShelf(String shelfId) => _userBooks.values
+      .where((ub) => ub.customShelfIds.contains(shelfId))
+      .toList()
+    ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
 
   Future<void> searchBooks(String query) async {
     if (query.trim().isEmpty) {
@@ -106,17 +112,17 @@ class BooksProvider extends ChangeNotifier {
     }
   }
 
-  void addBookToShelf(Book book, Shelf shelf) {
+  void addBookToShelf(Book book, ReadingStatus readingStatus) {
     final now = DateTime.now();
     final userBook = UserBook(
       userId: '', // Will be set from auth
       bookId: book.isbn,
-      shelf: shelf,
+      readingStatus: readingStatus,
       addedAt: now,
       updatedAt: now,
       book: book,
-      startedAt: shelf == Shelf.currentlyReading ? now : null,
-      finishedAt: shelf == Shelf.read ? now : null,
+      startedAt: readingStatus == ReadingStatus.currentlyReading ? now : null,
+      finishedAt: readingStatus == ReadingStatus.read ? now : null,
     );
 
     _userBooks[book.isbn] = userBook;
@@ -125,17 +131,67 @@ class BooksProvider extends ChangeNotifier {
     // TODO: Sync with backend via GraphQL
   }
 
-  void updateBookShelf(String bookId, Shelf newShelf) {
+  void updateBookShelf(String bookId, ReadingStatus newStatus) {
     final existing = _userBooks[bookId];
     if (existing == null) return;
 
     final now = DateTime.now();
     _userBooks[bookId] = existing.copyWith(
-      shelf: newShelf,
+      readingStatus: newStatus,
       updatedAt: now,
       startedAt:
-          newShelf == Shelf.currentlyReading ? now : existing.startedAt,
-      finishedAt: newShelf == Shelf.read ? now : existing.finishedAt,
+          newStatus == ReadingStatus.currentlyReading ? now : existing.startedAt,
+      finishedAt: newStatus == ReadingStatus.read ? now : existing.finishedAt,
+    );
+    notifyListeners();
+
+    // TODO: Sync with backend via GraphQL
+  }
+
+  /// Add a book to a custom shelf
+  void addToCustomShelf(String bookId, String shelfId) {
+    final existing = _userBooks[bookId];
+    if (existing == null) return;
+
+    if (existing.customShelfIds.contains(shelfId)) return;
+
+    final updatedShelfIds = [...existing.customShelfIds, shelfId];
+    _userBooks[bookId] = existing.copyWith(
+      customShelfIds: updatedShelfIds,
+      updatedAt: DateTime.now(),
+    );
+    notifyListeners();
+
+    // TODO: Sync with backend via GraphQL
+  }
+
+  /// Remove a book from a custom shelf
+  void removeFromCustomShelf(String bookId, String shelfId) {
+    final existing = _userBooks[bookId];
+    if (existing == null) return;
+
+    final updatedShelfIds = existing.customShelfIds.where((id) => id != shelfId).toList();
+    _userBooks[bookId] = existing.copyWith(
+      customShelfIds: updatedShelfIds,
+      updatedAt: DateTime.now(),
+    );
+    notifyListeners();
+
+    // TODO: Sync with backend via GraphQL
+  }
+
+  /// Update both reading status and custom shelves at once
+  void updateBookShelves(String bookId, ReadingStatus status, List<String> customShelfIds) {
+    final existing = _userBooks[bookId];
+    if (existing == null) return;
+
+    final now = DateTime.now();
+    _userBooks[bookId] = existing.copyWith(
+      readingStatus: status,
+      customShelfIds: customShelfIds,
+      updatedAt: now,
+      startedAt: status == ReadingStatus.currentlyReading ? now : existing.startedAt,
+      finishedAt: status == ReadingStatus.read ? now : existing.finishedAt,
     );
     notifyListeners();
 

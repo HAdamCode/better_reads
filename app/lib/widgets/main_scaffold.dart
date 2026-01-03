@@ -3,41 +3,26 @@ import 'package:go_router/go_router.dart';
 import '../utils/theme.dart';
 
 class MainScaffold extends StatelessWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const MainScaffold({super.key, required this.child});
-
-  int _getCurrentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/search')) return 1;
-    if (location.startsWith('/shelves')) return 2;
-    if (location.startsWith('/profile')) return 3;
-    return 0;
-  }
+  const MainScaffold({super.key, required this.navigationShell});
 
   void _onItemTapped(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go('/');
-        break;
-      case 1:
-        context.go('/search');
-        break;
-      case 2:
-        context.go('/shelves');
-        break;
-      case 3:
-        context.go('/profile');
-        break;
-    }
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
+    final currentIndex = navigationShell.currentIndex;
 
     return Scaffold(
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,

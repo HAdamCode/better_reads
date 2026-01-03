@@ -201,9 +201,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final userBook = currentlyReading[index];
+                  final heroTag = 'book-home-reading-${userBook.bookId}';
                   return BookCard(
                     book: userBook.book!,
-                    onTap: () => context.push('/book/${userBook.bookId}'),
+                    heroTag: heroTag,
+                    onTap: () => context.push('/book/${userBook.bookId}', extra: heroTag),
                   );
                 },
               ),
@@ -289,9 +291,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final book = provider.trendingBooks[index];
+                  final heroTag = 'book-home-trending-${book.isbn}';
                   return BookCard(
                     book: book,
-                    onTap: () => context.push('/book/${book.isbn}'),
+                    heroTag: heroTag,
+                    onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
                   );
                 },
               ),

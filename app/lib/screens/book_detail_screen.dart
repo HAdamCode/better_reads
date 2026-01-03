@@ -4,11 +4,15 @@ import 'package:provider/provider.dart';
 import '../models/book.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
+import '../providers/shelves_provider.dart';
+import '../utils/theme.dart';
+import '../widgets/shelf_picker_sheet.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final String isbn;
+  final String? heroTag;
 
-  const BookDetailScreen({super.key, required this.isbn});
+  const BookDetailScreen({super.key, required this.isbn, this.heroTag});
 
   @override
   State<BookDetailScreen> createState() => _BookDetailScreenState();
@@ -158,10 +162,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           child: Center(
             child: Padding(
               padding: const EdgeInsets.only(top: 60),
-              child: Hero(
-                tag: 'book-${_book!.isbn}',
-                child: _buildCover(context),
-              ),
+              child: widget.heroTag != null
+                  ? Hero(
+                      tag: widget.heroTag!,
+                      child: _buildCover(context),
+                    )
+                  : _buildCover(context),
             ),
           ),
         ),
@@ -260,10 +266,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Widget _buildShelfActions(BuildContext context) {
-    return Consumer<BooksProvider>(
-      builder: (context, provider, _) {
-        final currentShelf = provider.getBookShelf(_book!.isbn);
-        final userBook = provider.getUserBook(_book!.isbn);
+    return Consumer2<BooksProvider, ShelvesProvider>(
+      builder: (context, booksProvider, shelvesProvider, _) {
+        final currentStatus = booksProvider.getBookShelf(_book!.isbn);
+        final userBook = booksProvider.getUserBook(_book!.isbn);
+        final isOnAnyShelf = userBook != null;
+        final hasReadingStatus = currentStatus != null && currentStatus != ReadingStatus.none;
 
         return Card(
           child: Padding(
@@ -271,9 +279,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (currentShelf == null) ...[
+                if (!isOnAnyShelf) ...[
                   FilledButton.icon(
-                    onPressed: () => _showShelfPicker(context),
+                    onPressed: () => _addBookAndShowPicker(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Add to Shelf'),
                   ),
@@ -282,17 +290,17 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _showShelfPicker(context),
-                          icon: Icon(_getShelfIcon(currentShelf)),
-                          label: Text(currentShelf.displayName),
+                          onPressed: () => ShelfPickerSheet.show(context, _book!.isbn),
+                          icon: Icon(hasReadingStatus ? _getShelfIcon(currentStatus) : Icons.shelves),
+                          label: Text(hasReadingStatus ? currentStatus.displayName : 'Manage Shelves'),
                         ),
                       ),
                       const SizedBox(width: 8),
                       IconButton(
                         onPressed: () {
-                          provider.removeBookFromShelf(_book!.isbn);
+                          booksProvider.removeBookFromShelf(_book!.isbn);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Removed from shelf')),
+                            const SnackBar(content: Text('Removed from all shelves')),
                           );
                         },
                         icon: const Icon(Icons.delete_outline),
@@ -300,6 +308,26 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       ),
                     ],
                   ),
+                  // Show custom shelves badges
+                  if (userBook.customShelfIds.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: userBook.customShelfIds.map((shelfId) {
+                        final shelf = shelvesProvider.getShelf(shelfId);
+                        if (shelf == null) return const SizedBox.shrink();
+                        return Chip(
+                          label: Text(shelf.name),
+                          avatar: Icon(Icons.folder_outlined, size: 16, color: AppTheme.primaryColor),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onDeleted: () {
+                            booksProvider.removeFromCustomShelf(_book!.isbn, shelfId);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Text(
                     'Your Rating',
@@ -309,10 +337,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
-                      final rating = userBook?.rating ?? 0;
+                      final rating = userBook.rating ?? 0;
                       return IconButton(
                         onPressed: () {
-                          provider.updateBookRating(_book!.isbn, index + 1);
+                          booksProvider.updateBookRating(_book!.isbn, index + 1);
                         },
                         icon: Icon(
                           index < rating ? Icons.star : Icons.star_outline,
@@ -333,56 +361,23 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  void _showShelfPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.bookmark_outline, color: Colors.blue),
-                  title: const Text('Want to Read'),
-                  onTap: () {
-                    context.read<BooksProvider>().addBookToShelf(_book!, Shelf.wantToRead);
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.menu_book, color: Colors.orange),
-                  title: const Text('Currently Reading'),
-                  onTap: () {
-                    context.read<BooksProvider>().addBookToShelf(_book!, Shelf.currentlyReading);
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.check_circle, color: Colors.green),
-                  title: const Text('Read'),
-                  onTap: () {
-                    context.read<BooksProvider>().addBookToShelf(_book!, Shelf.read);
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  void _addBookAndShowPicker(BuildContext context) {
+    // First add the book with 'none' status so it exists in userBooks
+    context.read<BooksProvider>().addBookToShelf(_book!, ReadingStatus.none);
+    // Then show the shelf picker
+    ShelfPickerSheet.show(context, _book!.isbn);
   }
 
-  IconData _getShelfIcon(Shelf shelf) {
-    switch (shelf) {
-      case Shelf.wantToRead:
+  IconData _getShelfIcon(ReadingStatus status) {
+    switch (status) {
+      case ReadingStatus.wantToRead:
         return Icons.bookmark_outline;
-      case Shelf.currentlyReading:
+      case ReadingStatus.currentlyReading:
         return Icons.menu_book;
-      case Shelf.read:
+      case ReadingStatus.read:
         return Icons.check_circle;
+      case ReadingStatus.none:
+        return Icons.shelves;
     }
   }
 
