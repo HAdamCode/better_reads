@@ -200,7 +200,9 @@ class ShelfTheme {
       ];
 
   /// Returns header text style appropriate for this theme.
-  /// Fantasy: Cinzel (Roman-inspired), Romance: Playfair Display (elegant serif)
+  /// Classic Wood: Bitter (sturdy slab-serif, rustic library feel)
+  /// Fantasy: Cinzel (Roman-inspired)
+  /// Romance: Playfair Display (elegant serif)
   TextStyle headerStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -208,6 +210,14 @@ class ShelfTheme {
   }) {
     final effectiveColor = color ?? textPrimaryColor;
     final effectiveFontWeight = fontWeight ?? FontWeight.w700;
+
+    if (type == ShelfThemeType.classicWood) {
+      return GoogleFonts.bitter(
+        fontSize: fontSize,
+        fontWeight: effectiveFontWeight,
+        color: effectiveColor,
+      );
+    }
 
     if (type == ShelfThemeType.fantasy) {
       return GoogleFonts.cinzel(
@@ -234,7 +244,9 @@ class ShelfTheme {
   }
 
   /// Returns body text style appropriate for this theme.
-  /// Fantasy: Cardo (medieval), Romance: Cormorant Garamond (elegant)
+  /// Classic Wood: Crimson Text (warm classic book feel)
+  /// Fantasy: Cardo (medieval)
+  /// Romance: Cormorant Garamond (elegant)
   TextStyle bodyStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -243,6 +255,15 @@ class ShelfTheme {
   }) {
     final effectiveColor = color ?? textSecondaryColor;
     final effectiveFontWeight = fontWeight ?? FontWeight.normal;
+
+    if (type == ShelfThemeType.classicWood) {
+      return GoogleFonts.crimsonText(
+        fontSize: fontSize,
+        fontWeight: effectiveFontWeight,
+        fontStyle: fontStyle,
+        color: effectiveColor,
+      );
+    }
 
     if (type == ShelfThemeType.fantasy) {
       return GoogleFonts.cardo(
