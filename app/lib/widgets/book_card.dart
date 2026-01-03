@@ -167,7 +167,7 @@ class BookCard extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: book.coverUrlMedium,
       width: width,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       placeholder: (context, url) => Container(
         width: width,
         decoration: BoxDecoration(

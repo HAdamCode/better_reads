@@ -204,7 +204,7 @@ class ShelfTheme {
   /// Returns header text style appropriate for this theme.
   /// Classic Wood: Bitter (sturdy slab-serif, rustic library feel)
   /// Fantasy: Cinzel (Roman-inspired)
-  /// Romance: Playfair Display (elegant serif)
+  /// Romance: Great Vibes (romantic flowing script)
   TextStyle headerStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -230,7 +230,7 @@ class ShelfTheme {
     }
 
     if (type == ShelfThemeType.romance) {
-      return GoogleFonts.playfairDisplay(
+      return GoogleFonts.greatVibes(
         fontSize: fontSize,
         fontWeight: effectiveFontWeight,
         color: effectiveColor,
@@ -248,7 +248,7 @@ class ShelfTheme {
   /// Returns body text style appropriate for this theme.
   /// Classic Wood: Crimson Text (warm classic book feel)
   /// Fantasy: Cardo (medieval)
-  /// Romance: Cormorant Garamond (elegant)
+  /// Romance: Lora (elegant with calligraphic roots)
   TextStyle bodyStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -277,7 +277,7 @@ class ShelfTheme {
     }
 
     if (type == ShelfThemeType.romance) {
-      return GoogleFonts.cormorantGaramond(
+      return GoogleFonts.lora(
         fontSize: fontSize,
         fontWeight: effectiveFontWeight,
         fontStyle: fontStyle,

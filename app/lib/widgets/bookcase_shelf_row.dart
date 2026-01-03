@@ -309,7 +309,12 @@ class BookcaseShelfRow extends StatelessWidget {
               painter: _VineBorderPainter(seed: title.hashCode),
               child: content,
             )
-          : content,
+          : isRomance
+              ? CustomPaint(
+                  painter: _RoseBorderPainter(seed: title.hashCode),
+                  child: content,
+                )
+              : content,
     );
   }
 }
@@ -814,3 +819,362 @@ class _VinePoint {
 }
 
 enum _VineSide { left, top, right, bottom }
+
+/// Custom painter for ornate rose border (romance theme)
+/// Beauty and the Beast / Bridgerton aesthetic with baroque scrollwork and roses
+class _RoseBorderPainter extends CustomPainter {
+  final int seed;
+
+  _RoseBorderPainter({this.seed = 42});
+
+  // Romance color palette
+  static const _roseGold = Color(0xFFB76E79);
+  static const _enchantedRose = Color(0xFF8B2942);
+  static const _velvetBurgundy = Color(0xFF5C1A2B);
+  static const _antiqueGold = Color(0xFFC9A84C);
+  static const _pearlWhite = Color(0xFFF8F4F0);
+  static const _champagneRose = Color(0xFFF5DFD7);
+
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
+
+  int _randomIndex = 0;
+
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _randomIndex = 0;
+
+    // Layer 1: Soft shadow
+    _drawShadow(canvas, size);
+
+    // Layer 2: Ornate scrollwork border
+    _drawScrollworkBorder(canvas, size);
+
+    // Layer 3: Corner roses
+    _drawCornerRoses(canvas, size);
+
+    // Layer 4: Pearl accents
+    _drawPearlAccents(canvas, size);
+
+    // Layer 5: Gold sparkles
+    _drawSparkles(canvas, size);
+  }
+
+  void _drawShadow(Canvas canvas, Size size) {
+    final shadowPaint = Paint()
+      ..color = _velvetBurgundy.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = _createBorderPath(size, 2);
+    canvas.save();
+    canvas.translate(1.5, 1.5);
+    canvas.drawPath(path, shadowPaint);
+    canvas.restore();
+  }
+
+  void _drawScrollworkBorder(Canvas canvas, Size size) {
+    // Main border stroke
+    final borderPaint = Paint()
+      ..color = _roseGold
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final path = _createBorderPath(size, 0);
+    canvas.drawPath(path, borderPaint);
+
+    // Inner highlight
+    final highlightPaint = Paint()
+      ..color = _champagneRose.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    canvas.save();
+    canvas.translate(-0.5, -0.5);
+    canvas.drawPath(path, highlightPaint);
+    canvas.restore();
+
+    // Draw baroque flourishes along edges
+    _drawEdgeFlourishes(canvas, size);
+  }
+
+  Path _createBorderPath(Size size, double inset) {
+    final path = Path();
+    final cornerRadius = 8.0;
+
+    // Start at top-left after corner curve
+    path.moveTo(inset + cornerRadius + 4, inset + 4);
+
+    // Top edge with gentle wave
+    for (double x = cornerRadius + 8; x < size.width - cornerRadius - 8; x += 24) {
+      final waveY = inset + 4 + math.sin(x * 0.15) * 1.5;
+      path.lineTo(x, waveY);
+    }
+    path.lineTo(size.width - inset - cornerRadius - 4, inset + 4);
+
+    // Top-right corner flourish
+    path.quadraticBezierTo(
+      size.width - inset - 2, inset + 2,
+      size.width - inset - 4, inset + cornerRadius + 4,
+    );
+
+    // Right edge with gentle wave
+    for (double y = cornerRadius + 8; y < size.height - cornerRadius - 8; y += 24) {
+      final waveX = size.width - inset - 4 + math.sin(y * 0.15) * 1.5;
+      path.lineTo(waveX, y);
+    }
+    path.lineTo(size.width - inset - 4, size.height - inset - cornerRadius - 4);
+
+    // Bottom-right corner flourish
+    path.quadraticBezierTo(
+      size.width - inset - 2, size.height - inset - 2,
+      size.width - inset - cornerRadius - 4, size.height - inset - 4,
+    );
+
+    // Bottom edge with gentle wave
+    for (double x = size.width - cornerRadius - 8; x > cornerRadius + 8; x -= 24) {
+      final waveY = size.height - inset - 4 + math.sin(x * 0.15) * 1.5;
+      path.lineTo(x, waveY);
+    }
+    path.lineTo(inset + cornerRadius + 4, size.height - inset - 4);
+
+    // Bottom-left corner flourish
+    path.quadraticBezierTo(
+      inset + 2, size.height - inset - 2,
+      inset + 4, size.height - inset - cornerRadius - 4,
+    );
+
+    // Left edge with gentle wave
+    for (double y = size.height - cornerRadius - 8; y > cornerRadius + 8; y -= 24) {
+      final waveX = inset + 4 + math.sin(y * 0.15) * 1.5;
+      path.lineTo(waveX, y);
+    }
+    path.lineTo(inset + 4, inset + cornerRadius + 4);
+
+    // Top-left corner flourish
+    path.quadraticBezierTo(
+      inset + 2, inset + 2,
+      inset + cornerRadius + 4, inset + 4,
+    );
+
+    path.close();
+    return path;
+  }
+
+  void _drawEdgeFlourishes(Canvas canvas, Size size) {
+    final flourishPaint = Paint()
+      ..color = _roseGold.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    // Top edge flourishes
+    for (double x = 30; x < size.width - 30; x += 40) {
+      _drawSmallFlourish(canvas, Offset(x, 8), flourishPaint, true);
+    }
+
+    // Bottom edge flourishes
+    for (double x = 30; x < size.width - 30; x += 40) {
+      _drawSmallFlourish(canvas, Offset(x, size.height - 8), flourishPaint, false);
+    }
+
+    // Left edge flourishes
+    for (double y = 40; y < size.height - 40; y += 35) {
+      _drawSideFlourish(canvas, Offset(8, y), flourishPaint, true);
+    }
+
+    // Right edge flourishes
+    for (double y = 40; y < size.height - 40; y += 35) {
+      _drawSideFlourish(canvas, Offset(size.width - 8, y), flourishPaint, false);
+    }
+  }
+
+  void _drawSmallFlourish(Canvas canvas, Offset center, Paint paint, bool isTop) {
+    final dir = isTop ? 1.0 : -1.0;
+    final path = Path();
+
+    // S-curve flourish
+    path.moveTo(center.dx - 8, center.dy);
+    path.cubicTo(
+      center.dx - 4, center.dy + dir * 4,
+      center.dx + 4, center.dy - dir * 4,
+      center.dx + 8, center.dy,
+    );
+
+    canvas.drawPath(path, paint);
+
+    // Small curl at end
+    final curlPath = Path();
+    curlPath.moveTo(center.dx + 8, center.dy);
+    curlPath.quadraticBezierTo(
+      center.dx + 11, center.dy + dir * 2,
+      center.dx + 9, center.dy + dir * 4,
+    );
+    canvas.drawPath(curlPath, paint);
+  }
+
+  void _drawSideFlourish(Canvas canvas, Offset center, Paint paint, bool isLeft) {
+    final dir = isLeft ? 1.0 : -1.0;
+    final path = Path();
+
+    // Vertical S-curve
+    path.moveTo(center.dx, center.dy - 6);
+    path.cubicTo(
+      center.dx + dir * 4, center.dy - 3,
+      center.dx - dir * 4, center.dy + 3,
+      center.dx, center.dy + 6,
+    );
+
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawCornerRoses(Canvas canvas, Size size) {
+    // Draw a stylized rose at each corner
+    _drawRose(canvas, Offset(12, 12), 10); // Top-left
+    _drawRose(canvas, Offset(size.width - 12, 12), 10); // Top-right
+    _drawRose(canvas, Offset(12, size.height - 12), 10); // Bottom-left
+    _drawRose(canvas, Offset(size.width - 12, size.height - 12), 10); // Bottom-right
+  }
+
+  void _drawRose(Canvas canvas, Offset center, double roseSize) {
+    // Outer petals
+    final petalPaint = Paint()
+      ..color = _enchantedRose
+      ..style = PaintingStyle.fill;
+
+    final petalOutline = Paint()
+      ..color = _velvetBurgundy.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+
+    // Draw 5 overlapping petals in a spiral
+    for (int i = 0; i < 5; i++) {
+      final angle = (i * 72) * math.pi / 180 + _nextRandom() * 0.3;
+      final petalPath = Path();
+
+      final petalLength = roseSize * (0.8 - i * 0.08);
+      final petalWidth = roseSize * 0.5;
+
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate(angle);
+
+      petalPath.moveTo(0, 0);
+      petalPath.cubicTo(
+        -petalWidth * 0.5, -petalLength * 0.3,
+        -petalWidth * 0.3, -petalLength * 0.8,
+        0, -petalLength,
+      );
+      petalPath.cubicTo(
+        petalWidth * 0.3, -petalLength * 0.8,
+        petalWidth * 0.5, -petalLength * 0.3,
+        0, 0,
+      );
+
+      canvas.drawPath(petalPath, petalPaint);
+      canvas.drawPath(petalPath, petalOutline);
+      canvas.restore();
+    }
+
+    // Rose center with gold accent
+    final centerPaint = Paint()
+      ..color = _antiqueGold
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, roseSize * 0.2, centerPaint);
+
+    // Tiny highlight on center
+    final highlightPaint = Paint()
+      ..color = _pearlWhite.withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(center.dx - roseSize * 0.05, center.dy - roseSize * 0.05),
+      roseSize * 0.08,
+      highlightPaint,
+    );
+  }
+
+  void _drawPearlAccents(Canvas canvas, Size size) {
+    final pearlPaint = Paint()
+      ..color = _pearlWhite
+      ..style = PaintingStyle.fill;
+
+    final pearlHighlight = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+
+    // Pearl dots along edges
+    // Top edge
+    for (double x = 50; x < size.width - 50; x += 30) {
+      final offset = Offset(x + _nextRandom() * 4 - 2, 4);
+      _drawPearl(canvas, offset, 2.0, pearlPaint, pearlHighlight);
+    }
+
+    // Bottom edge
+    for (double x = 50; x < size.width - 50; x += 30) {
+      final offset = Offset(x + _nextRandom() * 4 - 2, size.height - 4);
+      _drawPearl(canvas, offset, 2.0, pearlPaint, pearlHighlight);
+    }
+  }
+
+  void _drawPearl(Canvas canvas, Offset center, double radius, Paint basePaint, Paint highlightPaint) {
+    // Pearl base
+    canvas.drawCircle(center, radius, basePaint);
+
+    // Highlight
+    canvas.drawCircle(
+      Offset(center.dx - radius * 0.3, center.dy - radius * 0.3),
+      radius * 0.4,
+      highlightPaint,
+    );
+  }
+
+  void _drawSparkles(Canvas canvas, Size size) {
+    final sparklePaint = Paint()
+      ..color = _antiqueGold.withValues(alpha: 0.7)
+      ..style = PaintingStyle.fill;
+
+    // Sparse sparkles near corners and roses
+    final sparklePositions = [
+      Offset(25, 20),
+      Offset(size.width - 25, 22),
+      Offset(22, size.height - 25),
+      Offset(size.width - 22, size.height - 22),
+      Offset(size.width / 2, 6),
+      Offset(size.width / 2, size.height - 6),
+    ];
+
+    for (final pos in sparklePositions) {
+      _drawSparkle(canvas, pos, 2.5 + _nextRandom() * 1.5, sparklePaint);
+    }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double size, Paint paint) {
+    // 4-point star sparkle
+    final path = Path();
+
+    path.moveTo(center.dx, center.dy - size);
+    path.lineTo(center.dx + size * 0.2, center.dy - size * 0.2);
+    path.lineTo(center.dx + size, center.dy);
+    path.lineTo(center.dx + size * 0.2, center.dy + size * 0.2);
+    path.lineTo(center.dx, center.dy + size);
+    path.lineTo(center.dx - size * 0.2, center.dy + size * 0.2);
+    path.lineTo(center.dx - size, center.dy);
+    path.lineTo(center.dx - size * 0.2, center.dy - size * 0.2);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoseBorderPainter oldDelegate) =>
+      oldDelegate.seed != seed;
+}

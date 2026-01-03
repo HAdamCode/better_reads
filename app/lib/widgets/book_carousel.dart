@@ -15,7 +15,7 @@ class BookCarousel extends StatefulWidget {
     required this.books,
     required this.heroTagPrefix,
     this.itemWidth = 120,
-    this.itemHeight = 180,
+    this.itemHeight = 200,
     this.trailingWidget,
   });
 
@@ -63,7 +63,7 @@ class _BookCarouselState extends State<BookCarousel> {
     final itemCount = widget.books.length + (widget.trailingWidget != null ? 1 : 0);
 
     return SizedBox(
-      height: widget.itemHeight + 30,
+      height: widget.itemHeight + 50,
       child: PageView.builder(
         controller: _pageController,
         padEnds: false, // Start first book at left edge
@@ -127,6 +127,8 @@ class _BookCarouselState extends State<BookCarousel> {
               child: BookCard(
                 book: userBook.book!,
                 heroTag: heroTag,
+                width: widget.itemWidth,
+                height: widget.itemHeight,
               ),
             ),
           ),
