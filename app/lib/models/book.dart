@@ -50,6 +50,48 @@ class Book {
     );
   }
 
+  factory Book.fromGoogleBooks(Map<String, dynamic> json) {
+    final volumeInfo = json['volumeInfo'] as Map<String, dynamic>? ?? {};
+    final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>?;
+
+    // Try to get ISBN-13, then ISBN-10
+    String isbn = '';
+    final identifiers = volumeInfo['industryIdentifiers'] as List<dynamic>?;
+    if (identifiers != null) {
+      for (final id in identifiers) {
+        final idMap = id as Map<String, dynamic>;
+        if (idMap['type'] == 'ISBN_13') {
+          isbn = idMap['identifier'] as String? ?? '';
+          break;
+        } else if (idMap['type'] == 'ISBN_10' && isbn.isEmpty) {
+          isbn = idMap['identifier'] as String? ?? '';
+        }
+      }
+    }
+    // Fallback to Google's ID if no ISBN
+    if (isbn.isEmpty) {
+      isbn = json['id'] as String? ?? '';
+    }
+
+    return Book(
+      isbn: isbn,
+      title: volumeInfo['title'] as String? ?? 'Unknown Title',
+      authors: (volumeInfo['authors'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          ['Unknown Author'],
+      coverUrl: imageLinks?['thumbnail'] as String?,
+      description: volumeInfo['description'] as String?,
+      pageCount: volumeInfo['pageCount'] as int?,
+      publishedDate: volumeInfo['publishedDate'] as String?,
+      subjects: (volumeInfo['categories'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      averageRating: (volumeInfo['averageRating'] as num?)?.toDouble(),
+      ratingsCount: volumeInfo['ratingsCount'] as int?,
+    );
+  }
+
   factory Book.fromOpenLibraryWork(Map<String, dynamic> json, String isbn) {
     String? description;
     if (json['description'] != null) {

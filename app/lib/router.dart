@@ -9,6 +9,8 @@ import 'screens/profile_screen.dart';
 import 'screens/book_detail_screen.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/auth/sign_up_screen.dart';
+import 'screens/auth/verify_email_screen.dart';
+import 'screens/isbn_scanner_screen.dart';
 import 'widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -22,7 +24,8 @@ GoRouter createRouter(AuthProvider authProvider) {
     redirect: (context, state) {
       final isAuthenticated = authProvider.isAuthenticated;
       final isAuthRoute = state.matchedLocation == '/sign-in' ||
-          state.matchedLocation == '/sign-up';
+          state.matchedLocation == '/sign-up' ||
+          state.matchedLocation.startsWith('/verify-email');
 
       // If not authenticated and not on auth route, redirect to sign in
       if (!isAuthenticated && !isAuthRoute) {
@@ -45,6 +48,13 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/sign-up',
         builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email/:email',
+        builder: (context, state) {
+          final email = Uri.decodeComponent(state.pathParameters['email']!);
+          return VerifyEmailScreen(email: email);
+        },
       ),
 
       // Main app shell with bottom navigation
@@ -86,6 +96,12 @@ GoRouter createRouter(AuthProvider authProvider) {
           final isbn = state.pathParameters['isbn']!;
           return BookDetailScreen(isbn: isbn);
         },
+      ),
+
+      // ISBN Scanner
+      GoRoute(
+        path: '/scan',
+        builder: (context, state) => const IsbnScannerScreen(),
       ),
     ],
   );

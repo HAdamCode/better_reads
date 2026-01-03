@@ -19,11 +19,22 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounce;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onTextChanged);
+  }
+
+  @override
   void dispose() {
+    _searchController.removeListener(_onTextChanged);
     _searchController.dispose();
     _focusNode.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    setState(() {}); // Rebuild to show/hide clear button
   }
 
   void _onSearchChanged(String query) {
@@ -48,13 +59,7 @@ class _SearchScreenState extends State<SearchScreen> {
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan ISBN',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('ISBN scanning coming soon!'),
-                ),
-              );
-            },
+            onPressed: () => context.push('/scan'),
           ),
         ],
       ),

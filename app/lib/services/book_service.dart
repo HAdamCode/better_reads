@@ -1,44 +1,50 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/book.dart';
 
 class BookService {
-  static const String _baseUrl = 'https://openlibrary.org';
-  static const String _searchUrl = '$_baseUrl/search.json';
-  static const String _worksUrl = '$_baseUrl/works';
+  static const String _googleBooksUrl = 'https://www.googleapis.com/books/v1/volumes';
+  static const String _openLibraryUrl = 'https://openlibrary.org';
 
   final http.Client _client;
+  String? _apiKey;
 
-  BookService({http.Client? client}) : _client = client ?? http.Client();
+  BookService({http.Client? client}) : _client = client ?? http.Client() {
+    _apiKey = dotenv.env['GOOGLE_BOOKS_API_KEY'];
+  }
 
   /// Search for books by query (title, author, or ISBN)
   Future<List<Book>> searchBooks(String query, {int limit = 20}) async {
-    if (query.trim().isEmpty) {
+    final trimmedQuery = query.trim();
+    if (trimmedQuery.isEmpty) {
       return [];
     }
 
-    final uri = Uri.parse('$_searchUrl').replace(queryParameters: {
-      'q': query,
-      'limit': limit.toString(),
-      'fields':
-          'key,title,author_name,cover_i,isbn,first_publish_year,number_of_pages_median,subject,ratings_average,ratings_count',
+    // Google Books API works without a key (lower rate limits)
+    // Add key if available for higher rate limits
+    final uri = Uri.parse(_googleBooksUrl).replace(queryParameters: {
+      'q': trimmedQuery,
+      'maxResults': limit.toString(),
+      if (_apiKey != null && _apiKey!.isNotEmpty) 'key': _apiKey!,
     });
 
     try {
-      final response = await _client.get(
-        uri,
-        headers: {
-          'User-Agent': 'BetterReads/1.0 (contact@betterreads.app)',
-        },
-      );
+      debugPrint('Search URL: $uri');
+      final response = await _client.get(uri);
+
+      debugPrint('Response status: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        debugPrint('Response body: ${response.body}');
+      }
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        final docs = data['docs'] as List<dynamic>? ?? [];
+        final items = data['items'] as List<dynamic>? ?? [];
 
-        return docs
-            .map((doc) =>
-                Book.fromOpenLibrarySearch(doc as Map<String, dynamic>))
+        return items
+            .map((item) => Book.fromGoogleBooks(item as Map<String, dynamic>))
             .where((book) => book.isbn.isNotEmpty)
             .toList();
       } else {
@@ -56,33 +62,27 @@ class BookService {
   Future<Book?> getBookByIsbn(String isbn) async {
     final cleanIsbn = isbn.replaceAll(RegExp(r'[^0-9X]'), '');
 
-    final uri = Uri.parse('$_baseUrl/api/books').replace(queryParameters: {
-      'bibkeys': 'ISBN:$cleanIsbn',
-      'format': 'json',
-      'jscmd': 'data',
-    });
+    final queryParams = {
+      'q': 'isbn:$cleanIsbn',
+    };
+    if (_apiKey != null && _apiKey!.isNotEmpty) {
+      queryParams['key'] = _apiKey!;
+    }
+
+    final uri = Uri.parse(_googleBooksUrl).replace(queryParameters: queryParams);
 
     try {
-      final response = await _client.get(
-        uri,
-        headers: {
-          'User-Agent': 'BetterReads/1.0 (contact@betterreads.app)',
-        },
-      );
+      final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
+        final items = data['items'] as List<dynamic>?;
 
-        if (data.isEmpty) {
+        if (items == null || items.isEmpty) {
           return null;
         }
 
-        final bookData = data['ISBN:$cleanIsbn'] as Map<String, dynamic>?;
-        if (bookData == null) {
-          return null;
-        }
-
-        return _parseBookFromApiData(bookData, cleanIsbn);
+        return Book.fromGoogleBooks(items[0] as Map<String, dynamic>);
       } else {
         throw BookServiceException(
           'Failed to get book: ${response.statusCode}',
@@ -96,7 +96,7 @@ class BookService {
 
   /// Get book details by Open Library work key
   Future<Book?> getBookByWorkKey(String workKey) async {
-    final uri = Uri.parse('$_worksUrl/$workKey.json');
+    final uri = Uri.parse('$_openLibraryUrl/works/$workKey.json');
 
     try {
       final response = await _client.get(
@@ -125,7 +125,7 @@ class BookService {
   /// Get trending/popular books
   Future<List<Book>> getTrendingBooks({int limit = 10}) async {
     // Open Library trending endpoint
-    final uri = Uri.parse('$_baseUrl/trending/daily.json').replace(
+    final uri = Uri.parse('$_openLibraryUrl/trending/daily.json').replace(
       queryParameters: {'limit': limit.toString()},
     );
 
@@ -165,46 +165,6 @@ class BookService {
       if (e is BookServiceException) rethrow;
       throw BookServiceException('Network error: $e');
     }
-  }
-
-  /// Get book cover URL
-  static String? getCoverUrl(String? isbn, {String size = 'L'}) {
-    if (isbn == null || isbn.isEmpty) return null;
-    return 'https://covers.openlibrary.org/b/isbn/$isbn-$size.jpg';
-  }
-
-  Book _parseBookFromApiData(Map<String, dynamic> data, String isbn) {
-    final authors = (data['authors'] as List<dynamic>?)
-            ?.map((a) => (a as Map<String, dynamic>)['name'] as String? ?? '')
-            .where((name) => name.isNotEmpty)
-            .toList() ??
-        ['Unknown Author'];
-
-    final subjects = (data['subjects'] as List<dynamic>?)
-        ?.take(5)
-        .map((s) => (s as Map<String, dynamic>)['name'] as String? ?? '')
-        .where((name) => name.isNotEmpty)
-        .toList();
-
-    String? coverUrl;
-    if (data['cover'] != null) {
-      coverUrl = data['cover']['large'] as String? ??
-          data['cover']['medium'] as String? ??
-          data['cover']['small'] as String?;
-    }
-
-    return Book(
-      isbn: isbn,
-      title: data['title'] as String? ?? 'Unknown Title',
-      authors: authors,
-      coverUrl: coverUrl,
-      description: null,
-      pageCount: data['number_of_pages'] as int?,
-      publishedDate: data['publish_date'] as String?,
-      subjects: subjects,
-      averageRating: null,
-      ratingsCount: null,
-    );
   }
 
   void dispose() {

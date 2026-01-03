@@ -44,14 +44,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             password: _passwordController.text,
             displayName: _nameController.text.trim(),
           );
-      // Show confirmation dialog or navigate based on result
+      // Navigate to verification screen
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created! Please check your email to verify.'),
-          ),
-        );
-        context.go('/sign-in');
+        final email = Uri.encodeComponent(_emailController.text.trim());
+        context.go('/verify-email/$email');
       }
     } on AuthProviderException catch (e) {
       setState(() {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_api/amplify_api.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'amplifyconfiguration.dart';
 
 import 'providers/auth_provider.dart' as app_auth;
@@ -12,6 +13,7 @@ import 'utils/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   await _configureAmplify();
   runApp(const BetterReadsApp());
 }

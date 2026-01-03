@@ -22,6 +22,7 @@ class BookCard extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: width,
+        height: height,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -33,13 +34,15 @@ class BookCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              book.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+            Flexible(
+              child: Text(
+                book.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
             ),
             const SizedBox(height: 2),
             Text(
@@ -57,7 +60,7 @@ class BookCard extends StatelessWidget {
   }
 
   Widget _buildCover() {
-    final coverHeight = height - 60; // Account for text below
+    final coverHeight = height - 70; // Account for text below
 
     if (book.coverUrl == null) {
       return Container(

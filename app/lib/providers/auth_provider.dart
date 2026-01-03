@@ -101,6 +101,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> resendSignUpCode({required String email}) async {
+    try {
+      await Amplify.Auth.resendSignUpCode(username: email);
+    } on AuthException catch (e) {
+      throw AuthProviderException(e.message);
+    }
+  }
+
   Future<void> signIn({
     required String email,
     required String password,
