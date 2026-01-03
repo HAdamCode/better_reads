@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../providers/books_provider.dart';
 
@@ -45,21 +47,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
-                  child: Text(
-                    (auth.displayName ?? auth.email ?? 'U')
-                        .substring(0, 1)
-                        .toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
+                _buildAvatar(context, auth),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -86,9 +74,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
-                  onPressed: () {
-                    // TODO: Edit profile
-                  },
+                  onPressed: () => context.push('/edit-profile'),
                 ),
               ],
             ),
@@ -278,6 +264,50 @@ class ProfileScreen extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.red,
           side: const BorderSide(color: Colors.red),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar(BuildContext context, AuthProvider auth) {
+    final profilePictureUrl = auth.profilePictureUrl;
+    final displayText = (auth.displayName ?? auth.email ?? 'U')
+        .substring(0, 1)
+        .toUpperCase();
+
+    if (profilePictureUrl != null) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: profilePictureUrl,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const CircularProgressIndicator(strokeWidth: 2),
+            errorWidget: (context, url, error) => Text(
+              displayText,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      child: Text(
+        displayText,
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );

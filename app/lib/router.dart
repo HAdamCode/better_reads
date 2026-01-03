@@ -12,6 +12,7 @@ import 'screens/auth/sign_up_screen.dart';
 import 'screens/auth/verify_email_screen.dart';
 import 'screens/isbn_scanner_screen.dart';
 import 'screens/shelf_contents_screen.dart';
+import 'screens/edit_profile_screen.dart';
 
 GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
   return GoRouter(
@@ -131,6 +132,15 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
             child: ShelfContentsScreen(shelfId: shelfId),
           );
         },
+      ),
+
+      // Edit Profile
+      GoRoute(
+        path: '/edit-profile',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const EditProfileScreen(),
+        ),
       ),
     ],
   );

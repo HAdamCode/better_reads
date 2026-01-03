@@ -5,8 +5,10 @@ import '../models/book.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
+import '../providers/lending_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/shelf_picker_sheet.dart';
+import '../widgets/lend_book_dialog.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final String isbn;
@@ -124,6 +126,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   _buildBookInfo(context),
                   const SizedBox(height: 24),
                   _buildShelfActions(context),
+                  const SizedBox(height: 16),
+                  _buildLendingSection(context),
                   const SizedBox(height: 24),
                   if (_book!.description != null) ...[
                     _buildDescription(context),
@@ -378,6 +382,155 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         return Icons.check_circle;
       case ReadingStatus.none:
         return Icons.shelves;
+    }
+  }
+
+  Widget _buildLendingSection(BuildContext context) {
+    return Consumer2<BooksProvider, LendingProvider>(
+      builder: (context, booksProvider, lendingProvider, _) {
+        final userBook = booksProvider.getUserBook(_book!.isbn);
+
+        // Only show lending section if book is on a shelf
+        if (userBook == null) {
+          return const SizedBox.shrink();
+        }
+
+        final activeLoan = lendingProvider.getActiveLoanForBook(_book!.isbn);
+        final isLent = activeLoan != null;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isLent ? Icons.person : Icons.share,
+                      size: 20,
+                      color: isLent ? AppTheme.primaryColor : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lending',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (isLent) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AppTheme.primaryColor,
+                          child: Text(
+                            activeLoan.borrowerName[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Lent to ${activeLoan.borrowerName}',
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Text(
+                                _formatLentDate(activeLoan.lentAt),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () => _markReturned(context, activeLoan.id),
+                          child: const Text('Returned'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  OutlinedButton.icon(
+                    onPressed: () => _showLendDialog(context),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Lend to someone'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLendDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await LendBookDialog.show(
+      context,
+      _book!.isbn,
+      bookTitle: _book!.title,
+    );
+    if (result == true && mounted) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Book marked as lent')),
+      );
+    }
+  }
+
+  Future<void> _markReturned(BuildContext context, String loanId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final lendingProvider = context.read<LendingProvider>();
+    try {
+      await lendingProvider.returnBook(loanId);
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Book marked as returned')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to mark as returned: $e')),
+        );
+      }
+    }
+  }
+
+  String _formatLentDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Lent today';
+    } else if (difference.inDays == 1) {
+      return 'Lent yesterday';
+    } else if (difference.inDays < 7) {
+      return 'Lent ${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return 'Lent $weeks week${weeks > 1 ? 's' : ''} ago';
+    } else {
+      final months = (difference.inDays / 30).floor();
+      return 'Lent $months month${months > 1 ? 's' : ''} ago';
     }
   }
 

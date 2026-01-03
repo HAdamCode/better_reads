@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 
 enum AuthStatus {
   unknown,
@@ -13,11 +13,15 @@ class AuthProvider extends ChangeNotifier {
   String? _userId;
   String? _email;
   String? _displayName;
+  String? _profilePictureKey;
+  String? _profilePictureUrl;
 
   AuthStatus get status => _status;
   String? get userId => _userId;
   String? get email => _email;
   String? get displayName => _displayName;
+  String? get profilePictureKey => _profilePictureKey;
+  String? get profilePictureUrl => _profilePictureUrl;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
   AuthProvider() {
@@ -47,13 +51,37 @@ class AuthProvider extends ChangeNotifier {
           _email = attr.value;
         } else if (attr.userAttributeKey == AuthUserAttributeKey.name) {
           _displayName = attr.value;
+        } else if (attr.userAttributeKey.key == 'custom:avatarUrl') {
+          _profilePictureKey = attr.value;
         }
       }
 
       final user = await Amplify.Auth.getCurrentUser();
       _userId = user.userId;
+
+      // Fetch the profile picture URL if we have a key
+      if (_profilePictureKey != null && _profilePictureKey!.isNotEmpty) {
+        await _refreshProfilePictureUrl();
+      }
     } catch (e) {
       debugPrint('Error fetching user attributes: $e');
+    }
+  }
+
+  Future<void> _refreshProfilePictureUrl() async {
+    if (_profilePictureKey == null) return;
+    try {
+      final result = await Amplify.Storage.getUrl(
+        path: StoragePath.fromString(_profilePictureKey!),
+        options: const StorageGetUrlOptions(
+          pluginOptions: S3GetUrlPluginOptions(
+            expiresIn: Duration(hours: 1),
+          ),
+        ),
+      ).result;
+      _profilePictureUrl = result.url.toString();
+    } catch (e) {
+      debugPrint('Error getting profile picture URL: $e');
     }
   }
 
@@ -136,6 +164,8 @@ class AuthProvider extends ChangeNotifier {
       _userId = null;
       _email = null;
       _displayName = null;
+      _profilePictureKey = null;
+      _profilePictureUrl = null;
       notifyListeners();
     } on AuthException catch (e) {
       throw AuthProviderException(e.message);
@@ -161,6 +191,80 @@ class AuthProvider extends ChangeNotifier {
         newPassword: newPassword,
         confirmationCode: confirmationCode,
       );
+    } on AuthException catch (e) {
+      throw AuthProviderException(e.message);
+    }
+  }
+
+  Future<void> updateDisplayName(String displayName) async {
+    try {
+      await Amplify.Auth.updateUserAttribute(
+        userAttributeKey: AuthUserAttributeKey.name,
+        value: displayName,
+      );
+      _displayName = displayName;
+      notifyListeners();
+    } on AuthException catch (e) {
+      throw AuthProviderException(e.message);
+    }
+  }
+
+  Future<void> uploadProfilePicture(String filePath) async {
+    if (_userId == null) {
+      throw AuthProviderException('User not authenticated');
+    }
+
+    try {
+      final file = AWSFile.fromPath(filePath);
+      final key = 'protected/$_userId/profile-picture.jpg';
+
+      // Upload to S3
+      await Amplify.Storage.uploadFile(
+        localFile: file,
+        path: StoragePath.fromString(key),
+        options: const StorageUploadFileOptions(
+          pluginOptions: S3UploadFilePluginOptions(
+            getProperties: true,
+          ),
+        ),
+      ).result;
+
+      // Update the user attribute with the new key
+      await Amplify.Auth.updateUserAttribute(
+        userAttributeKey: CognitoUserAttributeKey.custom('avatarUrl'),
+        value: key,
+      );
+
+      _profilePictureKey = key;
+      await _refreshProfilePictureUrl();
+      notifyListeners();
+    } on StorageException catch (e) {
+      throw AuthProviderException('Failed to upload image: ${e.message}');
+    } on AuthException catch (e) {
+      throw AuthProviderException(e.message);
+    }
+  }
+
+  Future<void> removeProfilePicture() async {
+    if (_profilePictureKey == null) return;
+
+    try {
+      // Delete from S3
+      await Amplify.Storage.remove(
+        path: StoragePath.fromString(_profilePictureKey!),
+      ).result;
+
+      // Clear the user attribute
+      await Amplify.Auth.updateUserAttribute(
+        userAttributeKey: CognitoUserAttributeKey.custom('avatarUrl'),
+        value: '',
+      );
+
+      _profilePictureKey = null;
+      _profilePictureUrl = null;
+      notifyListeners();
+    } on StorageException catch (e) {
+      throw AuthProviderException('Failed to remove image: ${e.message}');
     } on AuthException catch (e) {
       throw AuthProviderException(e.message);
     }

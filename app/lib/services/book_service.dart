@@ -122,6 +122,62 @@ class BookService {
     }
   }
 
+  /// Fetch ratings from Open Library for a book by ISBN
+  /// Returns a map with 'averageRating' and 'ratingsCount' or null if not found
+  Future<Map<String, dynamic>?> getRatingsFromOpenLibrary(String isbn) async {
+    final cleanIsbn = isbn.replaceAll(RegExp(r'[^0-9X]'), '');
+    if (cleanIsbn.isEmpty) return null;
+
+    try {
+      // First, get the work key from ISBN
+      final editionUri = Uri.parse('$_openLibraryUrl/isbn/$cleanIsbn.json');
+      final editionResponse = await _client.get(
+        editionUri,
+        headers: {
+          'User-Agent': 'BetterReads/1.0 (contact@betterreads.app)',
+        },
+      );
+
+      if (editionResponse.statusCode != 200) return null;
+
+      final editionData = json.decode(editionResponse.body) as Map<String, dynamic>;
+      final works = editionData['works'] as List<dynamic>?;
+      if (works == null || works.isEmpty) return null;
+
+      final workKey = (works[0] as Map<String, dynamic>)['key'] as String?;
+      if (workKey == null) return null;
+
+      // Now fetch ratings for this work
+      final ratingsUri = Uri.parse('$_openLibraryUrl$workKey/ratings.json');
+      final ratingsResponse = await _client.get(
+        ratingsUri,
+        headers: {
+          'User-Agent': 'BetterReads/1.0 (contact@betterreads.app)',
+        },
+      );
+
+      if (ratingsResponse.statusCode != 200) return null;
+
+      final ratingsData = json.decode(ratingsResponse.body) as Map<String, dynamic>;
+      final summary = ratingsData['summary'] as Map<String, dynamic>?;
+
+      if (summary == null) return null;
+
+      final average = summary['average'] as num?;
+      final count = summary['count'] as int?;
+
+      if (average == null || count == null || count == 0) return null;
+
+      return {
+        'averageRating': average.toDouble(),
+        'ratingsCount': count,
+      };
+    } catch (e) {
+      debugPrint('Failed to fetch Open Library ratings: $e');
+      return null;
+    }
+  }
+
   /// Get trending/popular books
   Future<List<Book>> getTrendingBooks({int limit = 10}) async {
     // Open Library trending endpoint

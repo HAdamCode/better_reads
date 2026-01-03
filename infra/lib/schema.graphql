@@ -31,12 +31,31 @@ type UserBook {
   userId: ID!
   bookId: String!
   shelf: Shelf!
+  customShelfIds: [String!]
   rating: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
   pagesRead: Int
   addedAt: AWSDateTime!
   updatedAt: AWSDateTime!
+}
+
+type CustomShelf {
+  userId: ID!
+  shelfId: ID!
+  name: String!
+  description: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type BookLoan {
+  userId: ID!
+  loanId: ID!
+  bookId: String!
+  borrowerName: String!
+  lentAt: AWSDateTime!
+  returnedAt: AWSDateTime
 }
 
 type Review {
@@ -106,6 +125,7 @@ input UpdateUserInput {
 input AddBookToShelfInput {
   bookId: String!
   shelf: Shelf!
+  customShelfIds: [String!]
   rating: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
@@ -114,6 +134,7 @@ input AddBookToShelfInput {
 input UpdateBookShelfInput {
   bookId: String!
   shelf: Shelf!
+  customShelfIds: [String!]
   rating: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
@@ -124,6 +145,27 @@ input CreateReviewInput {
   bookId: String!
   rating: Int!
   content: String
+}
+
+input CreateCustomShelfInput {
+  name: String!
+  description: String
+}
+
+input UpdateCustomShelfInput {
+  shelfId: ID!
+  name: String
+  description: String
+}
+
+input LendBookInput {
+  bookId: String!
+  borrowerName: String!
+}
+
+input UpdateLoanInput {
+  loanId: ID!
+  borrowerName: String
 }
 
 # Queries
@@ -137,6 +179,13 @@ type Query {
   myBooks: [UserBook]
   getUserBooks(userId: ID!): [UserBook]
   getBookReviews(bookId: String!, limit: Int): [Review]
+
+  # Custom shelf queries
+  myCustomShelves: [CustomShelf]
+
+  # Lending queries
+  myLoans: [BookLoan]
+  activeLoans: [BookLoan]
 
   # Social queries
   getFriends: [Friend]
@@ -157,6 +206,17 @@ type Mutation {
   addBookToShelf(input: AddBookToShelfInput!): UserBook
   updateBookShelf(input: UpdateBookShelfInput!): UserBook
   removeBookFromShelf(bookId: String!): UserBook
+
+  # Custom shelf mutations
+  createCustomShelf(input: CreateCustomShelfInput!): CustomShelf
+  updateCustomShelf(input: UpdateCustomShelfInput!): CustomShelf
+  deleteCustomShelf(shelfId: ID!): CustomShelf
+
+  # Lending mutations
+  lendBook(input: LendBookInput!): BookLoan
+  returnBook(loanId: ID!): BookLoan
+  updateLoan(input: UpdateLoanInput!): BookLoan
+  deleteLoan(loanId: ID!): BookLoan
 
   # Review mutations
   createReview(input: CreateReviewInput!): Review

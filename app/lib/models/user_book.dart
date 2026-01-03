@@ -17,7 +17,7 @@ extension ReadingStatusExtension on ReadingStatus {
       case ReadingStatus.read:
         return 'Read';
       case ReadingStatus.none:
-        return 'Not Started';
+        return 'No Status';
     }
   }
 

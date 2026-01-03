@@ -1,55 +1,47 @@
-import 'package:uuid/uuid.dart';
-
 class CustomShelf {
-  final String id;
+  final String shelfId;
+  final String userId;
   final String name;
+  final String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   CustomShelf({
-    required this.id,
+    required this.shelfId,
+    required this.userId,
     required this.name,
+    this.description,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  factory CustomShelf.create(String name) {
-    final now = DateTime.now();
-    return CustomShelf(
-      id: const Uuid().v4(),
-      name: name,
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
+  /// Alias for shelfId for backward compatibility
+  String get id => shelfId;
 
-  factory CustomShelf.fromJson(Map<String, dynamic> json) {
+  factory CustomShelf.fromGraphQL(Map<String, dynamic> json) {
     return CustomShelf(
-      id: json['id'] as String,
+      shelfId: json['shelfId'] as String,
+      userId: json['userId'] as String,
       name: json['name'] as String,
+      description: json['description'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
-
   CustomShelf copyWith({
-    String? id,
+    String? shelfId,
+    String? userId,
     String? name,
+    String? description,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return CustomShelf(
-      id: id ?? this.id,
+      shelfId: shelfId ?? this.shelfId,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
+      description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

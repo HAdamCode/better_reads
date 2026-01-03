@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/custom_shelf.dart';
+import '../services/graphql_service.dart';
 
 class ShelvesProvider extends ChangeNotifier {
-  static const String _storageKey = 'custom_shelves';
+  final GraphQLService _graphQLService;
 
   List<CustomShelf> _customShelves = [];
   bool _isLoading = false;
@@ -17,27 +16,22 @@ class ShelvesProvider extends ChangeNotifier {
   String? get error => _error;
   int get shelfCount => _customShelves.length;
 
-  ShelvesProvider() {
-    loadShelves();
+  ShelvesProvider({GraphQLService? graphQLService})
+      : _graphQLService = graphQLService ?? GraphQLService() {
+    syncFromBackend();
   }
 
-  /// Load shelves from local storage
-  Future<void> loadShelves() async {
+  /// Sync custom shelves from backend
+  Future<void> syncFromBackend() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString(_storageKey);
-
-      if (data != null) {
-        final decoded = json.decode(data) as Map<String, dynamic>;
-        final shelvesList = decoded['shelves'] as List<dynamic>? ?? [];
-        _customShelves = shelvesList
-            .map((e) => CustomShelf.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
+      final backendShelves = await _graphQLService.fetchMyCustomShelves();
+      _customShelves = backendShelves
+          .map((data) => CustomShelf.fromGraphQL(data))
+          .toList();
     } catch (e) {
       _error = 'Failed to load shelves: $e';
       debugPrint(_error);
@@ -47,27 +41,14 @@ class ShelvesProvider extends ChangeNotifier {
     }
   }
 
-  /// Save shelves to local storage
-  Future<void> _saveShelves() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final data = json.encode({
-        'shelves': _customShelves.map((s) => s.toJson()).toList(),
-      });
-      await prefs.setString(_storageKey, data);
-    } catch (e) {
-      debugPrint('Failed to save shelves: $e');
-    }
-  }
-
   /// Create a new custom shelf
-  Future<CustomShelf> createShelf(String name) async {
-    // Check for duplicate names
+  Future<CustomShelf?> createShelf(String name, {String? description}) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
       throw ArgumentError('Shelf name cannot be empty');
     }
 
+    // Check for duplicate names locally
     final exists = _customShelves.any(
       (s) => s.name.toLowerCase() == trimmedName.toLowerCase(),
     );
@@ -75,15 +56,27 @@ class ShelvesProvider extends ChangeNotifier {
       throw ArgumentError('A shelf with this name already exists');
     }
 
-    final shelf = CustomShelf.create(trimmedName);
-    _customShelves.add(shelf);
-    await _saveShelves();
-    notifyListeners();
-    return shelf;
+    try {
+      final result = await _graphQLService.createCustomShelf(
+        name: trimmedName,
+        description: description,
+      );
+
+      if (result != null) {
+        final shelf = CustomShelf.fromGraphQL(result);
+        _customShelves.add(shelf);
+        notifyListeners();
+        return shelf;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Failed to create shelf: $e');
+      rethrow;
+    }
   }
 
   /// Rename an existing shelf
-  Future<void> renameShelf(String shelfId, String newName) async {
+  Future<void> renameShelf(String shelfId, String newName, {String? description}) async {
     final trimmedName = newName.trim();
     if (trimmedName.isEmpty) {
       throw ArgumentError('Shelf name cannot be empty');
@@ -91,36 +84,50 @@ class ShelvesProvider extends ChangeNotifier {
 
     // Check for duplicate names (excluding current shelf)
     final exists = _customShelves.any(
-      (s) => s.id != shelfId && s.name.toLowerCase() == trimmedName.toLowerCase(),
+      (s) => s.shelfId != shelfId && s.name.toLowerCase() == trimmedName.toLowerCase(),
     );
     if (exists) {
       throw ArgumentError('A shelf with this name already exists');
     }
 
-    final index = _customShelves.indexWhere((s) => s.id == shelfId);
+    final index = _customShelves.indexWhere((s) => s.shelfId == shelfId);
     if (index == -1) {
       throw ArgumentError('Shelf not found');
     }
 
-    _customShelves[index] = _customShelves[index].copyWith(
-      name: trimmedName,
-      updatedAt: DateTime.now(),
-    );
-    await _saveShelves();
-    notifyListeners();
+    try {
+      final result = await _graphQLService.updateCustomShelf(
+        shelfId: shelfId,
+        name: trimmedName,
+        description: description,
+      );
+
+      if (result != null) {
+        _customShelves[index] = CustomShelf.fromGraphQL(result);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Failed to rename shelf: $e');
+      rethrow;
+    }
   }
 
   /// Delete a custom shelf
   Future<void> deleteShelf(String shelfId) async {
-    _customShelves.removeWhere((s) => s.id == shelfId);
-    await _saveShelves();
-    notifyListeners();
+    try {
+      await _graphQLService.deleteCustomShelf(shelfId);
+      _customShelves.removeWhere((s) => s.shelfId == shelfId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to delete shelf: $e');
+      rethrow;
+    }
   }
 
   /// Get a shelf by ID
   CustomShelf? getShelf(String id) {
     try {
-      return _customShelves.firstWhere((s) => s.id == id);
+      return _customShelves.firstWhere((s) => s.shelfId == id);
     } catch (_) {
       return null;
     }

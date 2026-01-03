@@ -160,4 +160,30 @@ class Book {
 
   String get coverUrlSmall =>
       coverUrl?.replaceAll('-L.jpg', '-S.jpg') ?? coverUrl ?? '';
+
+  Book copyWith({
+    String? isbn,
+    String? title,
+    List<String>? authors,
+    String? coverUrl,
+    String? description,
+    int? pageCount,
+    String? publishedDate,
+    List<String>? subjects,
+    double? averageRating,
+    int? ratingsCount,
+  }) {
+    return Book(
+      isbn: isbn ?? this.isbn,
+      title: title ?? this.title,
+      authors: authors ?? this.authors,
+      coverUrl: coverUrl ?? this.coverUrl,
+      description: description ?? this.description,
+      pageCount: pageCount ?? this.pageCount,
+      publishedDate: publishedDate ?? this.publishedDate,
+      subjects: subjects ?? this.subjects,
+      averageRating: averageRating ?? this.averageRating,
+      ratingsCount: ratingsCount ?? this.ratingsCount,
+    );
+  }
 }

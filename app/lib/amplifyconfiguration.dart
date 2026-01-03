@@ -6,6 +6,17 @@ const amplifyconfig = '''{
       "awsCognitoAuthPlugin": {
         "UserAgent": "aws-amplify-cli/0.1.0",
         "Version": "0.1.0",
+        "IdentityManager": {
+          "Default": {}
+        },
+        "CredentialsProvider": {
+          "CognitoIdentity": {
+            "Default": {
+              "PoolId": "us-east-1:7f7e53ad-a150-4600-97b7-0d19a24dd829",
+              "Region": "us-east-1"
+            }
+          }
+        },
         "CognitoUserPool": {
           "Default": {
             "PoolId": "us-east-1_Z7p84sjCu",
@@ -25,6 +36,15 @@ const amplifyconfig = '''{
           "region": "us-east-1",
           "authorizationType": "AMAZON_COGNITO_USER_POOLS"
         }
+      }
+    }
+  },
+  "storage": {
+    "plugins": {
+      "awsS3StoragePlugin": {
+        "bucket": "better-reads-storage-972890651266-us-east-1",
+        "region": "us-east-1",
+        "defaultAccessLevel": "protected"
       }
     }
   }

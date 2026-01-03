@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
+import '../providers/lending_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/book_list_tile.dart';
 import '../widgets/create_shelf_dialog.dart';
@@ -23,7 +24,7 @@ class _ShelvesScreenState extends State<ShelvesScreen>
   @override
   void initState() {
     super.initState();
-    _mainTabController = TabController(length: 2, vsync: this);
+    _mainTabController = TabController(length: 3, vsync: this);
     _statusTabController = TabController(length: 3, vsync: this);
   }
 
@@ -51,6 +52,7 @@ class _ShelvesScreenState extends State<ShelvesScreen>
           tabs: const [
             Tab(text: 'Reading Status'),
             Tab(text: 'Custom Shelves'),
+            Tab(text: 'Lent Out'),
           ],
         ),
       ),
@@ -59,6 +61,7 @@ class _ShelvesScreenState extends State<ShelvesScreen>
         children: [
           _buildReadingStatusTab(),
           _buildCustomShelvesTab(),
+          _buildLentOutTab(),
         ],
       ),
     );
@@ -82,31 +85,34 @@ class _ShelvesScreenState extends State<ShelvesScreen>
           ),
         ),
         Expanded(
-          child: Consumer<BooksProvider>(
-            builder: (context, provider, _) {
+          child: Consumer2<BooksProvider, LendingProvider>(
+            builder: (context, booksProvider, lendingProvider, _) {
               return TabBarView(
                 controller: _statusTabController,
                 children: [
                   _buildBookList(
                     context,
-                    provider.wantToReadBooks,
+                    booksProvider.wantToReadBooks,
                     ReadingStatus.wantToRead,
                     'Books you want to read',
                     Icons.bookmark_outline,
+                    lendingProvider,
                   ),
                   _buildBookList(
                     context,
-                    provider.currentlyReadingBooks,
+                    booksProvider.currentlyReadingBooks,
                     ReadingStatus.currentlyReading,
                     'Books you\'re reading now',
                     Icons.menu_book,
+                    lendingProvider,
                   ),
                   _buildBookList(
                     context,
-                    provider.readBooks,
+                    booksProvider.readBooks,
                     ReadingStatus.read,
                     'Books you\'ve finished',
                     Icons.check_circle_outline,
+                    lendingProvider,
                   ),
                 ],
               );
@@ -239,12 +245,194 @@ class _ShelvesScreenState extends State<ShelvesScreen>
     );
   }
 
+  Widget _buildLentOutTab() {
+    return Consumer2<LendingProvider, BooksProvider>(
+      builder: (context, lendingProvider, booksProvider, _) {
+        final activeLoans = lendingProvider.activeLoans;
+
+        if (activeLoans.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.share,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No books lent out',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'When you lend a book to someone,\nit will appear here',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: activeLoans.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final loan = activeLoans[index];
+            final userBook = booksProvider.getUserBook(loan.bookId);
+
+            if (userBook?.book == null) {
+              return const SizedBox.shrink();
+            }
+
+            final book = userBook!.book!;
+            final heroTag = 'book-lent-${book.isbn}';
+
+            return ListTile(
+              leading: _buildLentBookCover(book),
+              title: Text(
+                book.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.authorsString,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 10,
+                        backgroundColor: AppTheme.primaryColor,
+                        child: Text(
+                          loan.borrowerName[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          loan.borrowerName,
+                          style: TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        _formatLentDuration(loan.lentAt),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              isThreeLine: true,
+              trailing: IconButton(
+                icon: const Icon(Icons.check_circle_outline),
+                tooltip: 'Mark as returned',
+                onPressed: () => _markAsReturned(context, loan.id, book.title),
+              ),
+              onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLentBookCover(book) {
+    if (book.coverUrl == null) {
+      return Container(
+        width: 40,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(
+          Icons.book,
+          color: Colors.grey.shade500,
+          size: 20,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        book.coverUrl!,
+        width: 40,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 40,
+          height: 60,
+          color: Colors.grey.shade300,
+          child: Icon(Icons.book, color: Colors.grey.shade500, size: 20),
+        ),
+      ),
+    );
+  }
+
+  String _formatLentDuration(DateTime lentAt) {
+    final days = DateTime.now().difference(lentAt).inDays;
+    if (days == 0) return 'Today';
+    if (days == 1) return '1 day';
+    if (days < 7) return '$days days';
+    if (days < 30) {
+      final weeks = (days / 7).floor();
+      return '$weeks wk${weeks > 1 ? 's' : ''}';
+    }
+    final months = (days / 30).floor();
+    return '$months mo${months > 1 ? 's' : ''}';
+  }
+
+  Future<void> _markAsReturned(BuildContext context, String loanId, String bookTitle) async {
+    final lendingProvider = context.read<LendingProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await lendingProvider.returnBook(loanId);
+      messenger.showSnackBar(
+        SnackBar(content: Text('$bookTitle marked as returned')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to mark as returned: $e')),
+      );
+    }
+  }
+
   Widget _buildBookList(
     BuildContext context,
     List<UserBook> books,
     ReadingStatus status,
     String emptyMessage,
     IconData emptyIcon,
+    LendingProvider lendingProvider,
   ) {
     if (books.isEmpty) {
       return Center(
@@ -346,7 +534,7 @@ class _ShelvesScreenState extends State<ShelvesScreen>
                 heroTag: heroTag,
                 onTap: () => context.push('/book/${userBook.bookId}', extra: heroTag),
                 subtitle: _buildSubtitle(userBook),
-                trailing: _buildTrailing(userBook),
+                trailing: _buildTrailing(userBook, lendingProvider),
               );
             },
           ),
@@ -355,8 +543,41 @@ class _ShelvesScreenState extends State<ShelvesScreen>
     );
   }
 
-  Widget? _buildTrailing(UserBook userBook) {
+  Widget? _buildTrailing(UserBook userBook, LendingProvider lendingProvider) {
     final widgets = <Widget>[];
+    final isLent = lendingProvider.isBookLentOut(userBook.bookId);
+
+    // Lent indicator
+    if (isLent) {
+      final loan = lendingProvider.getActiveLoanForBook(userBook.bookId);
+      widgets.add(
+        Tooltip(
+          message: 'Lent to ${loan?.borrowerName ?? 'someone'}',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person, size: 14, color: Colors.orange.shade700),
+                const SizedBox(width: 2),
+                Text(
+                  'Lent',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.orange.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     // Rating
     if (userBook.rating != null) {

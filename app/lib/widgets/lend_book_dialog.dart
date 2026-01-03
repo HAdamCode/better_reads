@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/shelves_provider.dart';
+import '../providers/lending_provider.dart';
 import '../utils/theme.dart';
 
-class CreateShelfDialog extends StatefulWidget {
-  const CreateShelfDialog({super.key});
+class LendBookDialog extends StatefulWidget {
+  final String bookId;
+  final String? bookTitle;
 
-  static Future<String?> show(BuildContext context) {
-    return showDialog<String>(
+  const LendBookDialog({
+    super.key,
+    required this.bookId,
+    this.bookTitle,
+  });
+
+  static Future<bool?> show(BuildContext context, String bookId, {String? bookTitle}) {
+    return showDialog<bool>(
       context: context,
-      builder: (context) => const CreateShelfDialog(),
+      builder: (context) => LendBookDialog(bookId: bookId, bookTitle: bookTitle),
     );
   }
 
   @override
-  State<CreateShelfDialog> createState() => _CreateShelfDialogState();
+  State<LendBookDialog> createState() => _LendBookDialogState();
 }
 
-class _CreateShelfDialogState extends State<CreateShelfDialog> {
+class _LendBookDialogState extends State<LendBookDialog> {
   final _controller = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isCreating = false;
+  bool _isLending = false;
   String? _error;
 
   @override
@@ -29,34 +36,29 @@ class _CreateShelfDialogState extends State<CreateShelfDialog> {
     super.dispose();
   }
 
-  Future<void> _createShelf() async {
+  Future<void> _lendBook() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
-      _isCreating = true;
+      _isLending = true;
       _error = null;
     });
 
     try {
-      final provider = context.read<ShelvesProvider>();
-      final shelf = await provider.createShelf(_controller.text);
-      if (mounted && shelf != null) {
-        Navigator.of(context).pop(shelf.id);
-      } else if (mounted) {
-        setState(() {
-          _error = 'Failed to create shelf';
-          _isCreating = false;
-        });
+      final provider = context.read<LendingProvider>();
+      await provider.lendBook(widget.bookId, _controller.text);
+      if (mounted) {
+        Navigator.of(context).pop(true);
       }
     } on ArgumentError catch (e) {
       setState(() {
         _error = e.message;
-        _isCreating = false;
+        _isLending = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to create shelf';
-        _isCreating = false;
+        _error = 'Failed to lend book';
+        _isLending = false;
       });
     }
   }
@@ -64,34 +66,42 @@ class _CreateShelfDialogState extends State<CreateShelfDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Create New Shelf'),
+      title: const Text('Lend Book'),
       content: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.bookTitle != null) ...[
+              Text(
+                'Lending: ${widget.bookTitle}',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _controller,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                labelText: 'Shelf Name',
-                hintText: 'e.g., Book Club, Favorites',
+                labelText: 'Borrower Name',
+                hintText: 'Who are you lending to?',
+                prefixIcon: Icon(Icons.person_outline),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a shelf name';
+                  return 'Please enter a name';
                 }
                 if (value.trim().length < 2) {
                   return 'Name must be at least 2 characters';
                 }
-                if (value.trim().length > 50) {
-                  return 'Name must be less than 50 characters';
-                }
                 return null;
               },
-              onFieldSubmitted: (_) => _createShelf(),
+              onFieldSubmitted: (_) => _lendBook(),
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
@@ -108,12 +118,12 @@ class _CreateShelfDialogState extends State<CreateShelfDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isCreating ? null : () => Navigator.of(context).pop(),
+          onPressed: _isLending ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _isCreating ? null : _createShelf,
-          child: _isCreating
+        FilledButton.icon(
+          onPressed: _isLending ? null : _lendBook,
+          icon: _isLending
               ? SizedBox(
                   width: 16,
                   height: 16,
@@ -122,7 +132,8 @@ class _CreateShelfDialogState extends State<CreateShelfDialog> {
                     color: AppTheme.surfaceColor,
                   ),
                 )
-              : const Text('Create'),
+              : const Icon(Icons.share, size: 18),
+          label: const Text('Lend'),
         ),
       ],
     );

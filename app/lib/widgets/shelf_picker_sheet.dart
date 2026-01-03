@@ -122,25 +122,31 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
                       ),
                     ),
                   ),
-                  _buildStatusOption(
-                    ReadingStatus.wantToRead,
-                    Icons.bookmark_outline,
-                    Colors.blue,
-                  ),
-                  _buildStatusOption(
-                    ReadingStatus.currentlyReading,
-                    Icons.menu_book,
-                    Colors.orange,
-                  ),
-                  _buildStatusOption(
-                    ReadingStatus.read,
-                    Icons.check_circle_outline,
-                    Colors.green,
-                  ),
-                  _buildStatusOption(
-                    ReadingStatus.none,
-                    Icons.remove_circle_outline,
-                    Colors.grey,
+                  Consumer<BooksProvider>(
+                    builder: (context, booksProvider, _) {
+                      return Column(
+                        children: [
+                          _buildStatusOption(
+                            ReadingStatus.wantToRead,
+                            Icons.bookmark_outline,
+                            Colors.blue,
+                            booksProvider.wantToReadBooks.length,
+                          ),
+                          _buildStatusOption(
+                            ReadingStatus.currentlyReading,
+                            Icons.menu_book,
+                            Colors.orange,
+                            booksProvider.currentlyReadingBooks.length,
+                          ),
+                          _buildStatusOption(
+                            ReadingStatus.read,
+                            Icons.check_circle_outline,
+                            Colors.green,
+                            booksProvider.readBooks.length,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
@@ -171,8 +177,8 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
                       ],
                     ),
                   ),
-                  Consumer<ShelvesProvider>(
-                    builder: (context, shelvesProvider, _) {
+                  Consumer2<ShelvesProvider, BooksProvider>(
+                    builder: (context, shelvesProvider, booksProvider, _) {
                       final shelves = shelvesProvider.sortedShelves;
                       if (shelves.isEmpty) {
                         return Padding(
@@ -203,6 +209,7 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
                       return Column(
                         children: shelves.map((shelf) {
                           final isSelected = _selectedShelfIds.contains(shelf.id);
+                          final bookCount = booksProvider.getBooksOnCustomShelf(shelf.id).length;
                           return CheckboxListTile(
                             value: isSelected,
                             onChanged: (value) {
@@ -214,7 +221,19 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
                                 }
                               });
                             },
-                            title: Text(shelf.name),
+                            title: Row(
+                              children: [
+                                Text(shelf.name),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '($bookCount)',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
                             secondary: Icon(
                               Icons.folder_outlined,
                               color: isSelected ? AppTheme.primaryColor : Colors.grey,
@@ -234,7 +253,7 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
     );
   }
 
-  Widget _buildStatusOption(ReadingStatus status, IconData icon, Color color) {
+  Widget _buildStatusOption(ReadingStatus status, IconData icon, Color color, int count) {
     final isSelected = _selectedStatus == status;
     return RadioListTile<ReadingStatus>(
       value: status,
@@ -244,7 +263,19 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
           setState(() => _selectedStatus = value);
         }
       },
-      title: Text(status.displayName),
+      title: Row(
+        children: [
+          Text(status.displayName),
+          const SizedBox(width: 8),
+          Text(
+            '($count)',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
       secondary: Icon(icon, color: isSelected ? color : Colors.grey),
       activeColor: color,
     );
