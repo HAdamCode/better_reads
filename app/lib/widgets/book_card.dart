@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
+import '../utils/theme.dart';
 
 class BookCard extends StatelessWidget {
   final Book book;
@@ -26,32 +27,52 @@ class BookCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Hero(
-              tag: 'book-${book.isbn}',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: _buildCover(),
+            // Book cover with shadow
+            Expanded(
+              flex: 3,
+              child: Hero(
+                tag: 'book-${book.isbn}',
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(2, 4),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(1, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: _buildCover(context),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: Text(
-                book.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
+            const SizedBox(height: 10),
+            // Title
+            Text(
+              book.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
             ),
             const SizedBox(height: 2),
+            // Author
             Text(
               book.authorsString,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
@@ -59,32 +80,41 @@ class BookCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCover() {
-    final coverHeight = height - 70; // Account for text below
-
+  Widget _buildCover(BuildContext context) {
     if (book.coverUrl == null) {
       return Container(
         width: width,
-        height: coverHeight,
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(8),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.secondaryColor.withValues(alpha: 0.4),
+              AppTheme.primaryColor.withValues(alpha: 0.3),
+            ],
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.book, size: 32, color: Colors.grey.shade500),
-            const SizedBox(height: 4),
+            Icon(
+              Icons.auto_stories_rounded,
+              size: 28,
+              color: AppTheme.primaryColor.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 book.title,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.shade600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                  height: 1.2,
                 ),
               ),
             ),
@@ -96,21 +126,33 @@ class BookCard extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: book.coverUrlMedium,
       width: width,
-      height: coverHeight,
       fit: BoxFit.cover,
       placeholder: (context, url) => Container(
         width: width,
-        height: coverHeight,
-        color: Colors.grey.shade200,
-        child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryColor.withValues(alpha: 0.2),
+        ),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppTheme.primaryColor.withValues(alpha: 0.5),
+            ),
+          ),
         ),
       ),
       errorWidget: (context, url, error) => Container(
         width: width,
-        height: coverHeight,
-        color: Colors.grey.shade300,
-        child: Icon(Icons.book, color: Colors.grey.shade500),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+        ),
+        child: Icon(
+          Icons.auto_stories_rounded,
+          color: AppTheme.primaryColor.withValues(alpha: 0.5),
+          size: 32,
+        ),
       ),
     );
   }
