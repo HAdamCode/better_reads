@@ -66,7 +66,7 @@ class _BookCarouselState extends State<BookCarousel> {
       height: widget.itemHeight + 30,
       child: PageView.builder(
         controller: _pageController,
-        padEnds: true, // Centers first/last items automatically
+        padEnds: false, // Start first book at left edge
         pageSnapping: true, // Snap to nearest book
         clipBehavior: Clip.none, // Allow overflow for shadows
         itemCount: itemCount,
