@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-enum ShelfThemeType { minimalist, classicWood, fantasy, romance }
+enum ShelfThemeType { minimalist, classicWood, fantasy, romance, pride }
 
 class ShelfTheme {
   final ShelfThemeType type;
@@ -154,31 +154,66 @@ class ShelfTheme {
         type: ShelfThemeType.romance,
         name: 'Romance',
         description: 'Elegant & enchanting',
-        backgroundColor: Color(0xFFFDF6F0), // Soft cream
-        backPanelTopColor: Color(0xFFF5DFD7), // Champagne rose (warmer)
-        backPanelMiddleColor: Color(0xFFFAF0EA), // Warm cream
-        backPanelBottomColor: Color(0xFFF5E6E0), // Blush tint
-        sidePanelInnerColor: Color(0xFFC9A090), // Deeper dusty rose
-        sidePanelMiddleColor: Color(0xFFB76E79), // Rose gold
-        sidePanelOuterColor: Color(0xFFE8C4C4), // Soft blush
-        dividerDarkColor: Color(0xFF8B2942), // Enchanted rose (dramatic)
-        dividerMiddleColor: Color(0xFFB76E79), // Rose gold
-        dividerLightColor: Color(0xFFF5DFD7), // Champagne rose
-        textPrimaryColor: Color(0xFF5C1A2B), // Velvet burgundy (richer)
-        textSecondaryColor: Color(0xB35C1A2B), // 70% opacity velvet burgundy
-        iconColor: Color(0xFFB76E79), // Rose gold
+        backgroundColor: Color(0xFF4A2530), // Deep burgundy/wine
+        backPanelTopColor: Color(0xFF2D1520), // Dark shadow
+        backPanelMiddleColor: Color(0xFF3D2028), // Rich mahogany wine
+        backPanelBottomColor: Color(0xFF2D1520), // Dark shadow
+        sidePanelInnerColor: Color(0xFF2D1520), // Deep shadow
+        sidePanelMiddleColor: Color(0xFF5C2D3A), // Dark rose
+        sidePanelOuterColor: Color(0xFF8B4A5A), // Muted rose edge
+        dividerDarkColor: Color(0xFF5C2D3A), // Dark rose
+        dividerMiddleColor: Color(0xFF8B4A5A), // Muted rose
+        dividerLightColor: Color(0xFFD4A574), // Candlelight gold highlight
+        textPrimaryColor: Color(0xFFE8D4C4), // Warm cream
+        textSecondaryColor: Color(0xB3D4A574), // 70% candlelight gold
+        iconColor: Color(0xFFD4AF37), // Gold
         sidePanelWidth: 16, // Wider for ornate details
         dividerHeight: 16, // Taller for rose motifs
         textureType: ShelfTextureType.ornateFiligree,
         grainColors: [
-          Color(0xFFD4A5A5), // Dusty rose
-          Color(0xFFE8C4C4), // Soft blush
-          Color(0xFFC9A0A0), // Muted rose
-          Color(0xFFF5DFD7), // Champagne rose
+          Color(0xFF3D2028), // Dark wine
+          Color(0xFF5C2D3A), // Dark rose
+          Color(0xFF4A2530), // Deep burgundy
+          Color(0xFF6B3A48), // Muted burgundy rose
         ],
         grainHighlightColor: Color(0xFFC9A84C), // Antique gold (warmer, aged)
         accentGlowColor: Color(0xFFE8C87E), // Candlelight gold (warm glow)
         starAccentColor: Color(0xFFFFFAF5), // Shimmer for magical sparkles
+      );
+
+  /// Pride theme - LGBTQ+ celebration with rainbow colors
+  /// Bold, vibrant, joyful with hearts, sparkles, and rainbow gradients
+  factory ShelfTheme.pride() => const ShelfTheme(
+        type: ShelfThemeType.pride,
+        name: 'Pride',
+        description: 'Bold & celebratory',
+        backgroundColor: Color(0xFFFFFFFF), // Clean white
+        backPanelTopColor: Color(0xFFE53935), // Bold red
+        backPanelMiddleColor: Color(0xFFFFEB3B), // Bold yellow
+        backPanelBottomColor: Color(0xFF9C27B0), // Bold purple
+        sidePanelInnerColor: Color(0xFFE53935), // Red
+        sidePanelMiddleColor: Color(0xFF4CAF50), // Green
+        sidePanelOuterColor: Color(0xFF2196F3), // Blue
+        dividerDarkColor: Color(0xFFE53935), // Red
+        dividerMiddleColor: Color(0xFF4CAF50), // Green
+        dividerLightColor: Color(0xFF2196F3), // Blue
+        textPrimaryColor: Color(0xFF1A1A1A), // Near black for contrast
+        textSecondaryColor: Color(0xB31A1A1A), // 70% black
+        iconColor: Color(0xFFE91E63), // Hot pink
+        sidePanelWidth: 20, // Extra wide for rainbow stripes
+        dividerHeight: 22, // Extra tall for rainbow stripes
+        textureType: ShelfTextureType.rainbowSparkle,
+        grainColors: [
+          Color(0xFFE53935), // Red
+          Color(0xFFFF9800), // Orange
+          Color(0xFFFFEB3B), // Yellow
+          Color(0xFF4CAF50), // Green
+          Color(0xFF2196F3), // Blue
+          Color(0xFF9C27B0), // Purple
+        ],
+        grainHighlightColor: Color(0xFFFFD700), // Gold shimmer
+        accentGlowColor: Color(0xFFFF006E), // Hot pink glow
+        starAccentColor: Color(0xFFFFFFFF), // White sparkles
       );
 
   static ShelfTheme fromType(ShelfThemeType type) {
@@ -191,6 +226,8 @@ class ShelfTheme {
         return ShelfTheme.fantasy();
       case ShelfThemeType.romance:
         return ShelfTheme.romance();
+      case ShelfThemeType.pride:
+        return ShelfTheme.pride();
     }
   }
 
@@ -199,6 +236,7 @@ class ShelfTheme {
         ShelfTheme.classicWood(),
         ShelfTheme.fantasy(),
         ShelfTheme.romance(),
+        ShelfTheme.pride(),
       ];
 
   /// Returns header text style appropriate for this theme.
@@ -237,6 +275,14 @@ class ShelfTheme {
       );
     }
 
+    if (type == ShelfThemeType.pride) {
+      return GoogleFonts.pacifico(
+        fontSize: fontSize,
+        fontWeight: effectiveFontWeight,
+        color: effectiveColor,
+      );
+    }
+
     // Default system font for other themes
     return TextStyle(
       fontSize: fontSize,
@@ -249,6 +295,7 @@ class ShelfTheme {
   /// Classic Wood: Crimson Text (warm classic book feel)
   /// Fantasy: Cardo (medieval)
   /// Romance: Lora (elegant with calligraphic roots)
+  /// Pride: Inter (modern, accessible)
   TextStyle bodyStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -285,6 +332,15 @@ class ShelfTheme {
       );
     }
 
+    if (type == ShelfThemeType.pride) {
+      return GoogleFonts.inter(
+        fontSize: fontSize,
+        fontWeight: effectiveFontWeight,
+        fontStyle: fontStyle,
+        color: effectiveColor,
+      );
+    }
+
     // Default system font for other themes
     return TextStyle(
       fontSize: fontSize,
@@ -300,4 +356,5 @@ enum ShelfTextureType {
   woodGrain,
   stoneRune,
   ornateFiligree,
+  rainbowSparkle,
 }

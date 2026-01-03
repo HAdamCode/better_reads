@@ -1420,6 +1420,404 @@ class FiligreeHorizontalPainter extends CustomPainter {
   bool shouldRepaint(covariant FiligreeHorizontalPainter oldDelegate) => oldDelegate.seed != seed;
 }
 
+/// Rainbow sparkle painter for Pride theme side panels
+/// Bold, vibrant LGBTQ+ celebration with hearts, sparkles, and rainbow stripes
+class RainbowSparklePainter extends CustomPainter {
+  final List<Color>? rainbowColors;
+  final Color? glowColor;
+  final Color? sparkleColor;
+  final int seed;
+
+  // Pride flag colors - BOLD and VIBRANT
+  static const _red = Color(0xFFE53935);
+  static const _orange = Color(0xFFFF9800);
+  static const _yellow = Color(0xFFFFEB3B);
+  static const _green = Color(0xFF4CAF50);
+  static const _blue = Color(0xFF2196F3);
+  static const _purple = Color(0xFF9C27B0);
+  static const _pink = Color(0xFFE91E63);
+  static const _white = Color(0xFFFFFFFF);
+
+  RainbowSparklePainter({
+    this.rainbowColors,
+    this.glowColor,
+    this.sparkleColor,
+    this.seed = 42,
+  });
+
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
+
+  int _randomIndex = 0;
+
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _randomIndex = 0;
+    final colors = rainbowColors ?? [_red, _orange, _yellow, _green, _blue, _purple];
+
+    // Layer 1: BOLD rainbow stripes (the main visual)
+    _drawBoldRainbowStripes(canvas, size, colors);
+
+    // Layer 2: Hearts scattered
+    _drawHearts(canvas, size, colors);
+
+    // Layer 3: Big sparkles
+    _drawSparkles(canvas, size);
+
+    // Layer 4: Edge highlights
+    _drawEdgeHighlights(canvas, size);
+  }
+
+  void _drawBoldRainbowStripes(Canvas canvas, Size size, List<Color> colors) {
+    final paint = Paint();
+    final stripeHeight = size.height / colors.length;
+
+    // Draw bold, solid rainbow stripes
+    for (int i = 0; i < colors.length; i++) {
+      paint.color = colors[i].withValues(alpha: 0.85); // BOLD alpha
+      canvas.drawRect(
+        Rect.fromLTWH(0, i * stripeHeight, size.width, stripeHeight + 1),
+        paint,
+      );
+    }
+
+    // Add subtle gradient overlay for depth
+    final gradientPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Colors.black.withValues(alpha: 0.15),
+          Colors.white.withValues(alpha: 0.1),
+          Colors.black.withValues(alpha: 0.1),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), gradientPaint);
+  }
+
+  void _drawHearts(Canvas canvas, Size size, List<Color> colors) {
+    // Draw hearts at random positions - MORE and BIGGER
+    for (int i = 0; i < 4; i++) {
+      final x = 3 + _nextRandom() * (size.width - 6);
+      final y = 25 + _nextRandom() * (size.height - 50);
+      final heartSize = 5 + _nextRandom() * 4;
+
+      _drawHeart(canvas, Offset(x, y), heartSize, _white);
+    }
+  }
+
+  void _drawHeart(Canvas canvas, Offset center, double size, Color color) {
+    // Shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+
+    final shadowPath = Path();
+    shadowPath.moveTo(center.dx + 0.5, center.dy + size * 0.35);
+    shadowPath.cubicTo(
+      center.dx - size * 0.5 + 0.5, center.dy + 0.5,
+      center.dx - size * 0.5 + 0.5, center.dy - size * 0.4 + 0.5,
+      center.dx + 0.5, center.dy - size * 0.2 + 0.5,
+    );
+    shadowPath.cubicTo(
+      center.dx + size * 0.5 + 0.5, center.dy - size * 0.4 + 0.5,
+      center.dx + size * 0.5 + 0.5, center.dy + 0.5,
+      center.dx + 0.5, center.dy + size * 0.35,
+    );
+    canvas.drawPath(shadowPath, shadowPaint);
+
+    // Main heart
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(center.dx, center.dy + size * 0.3);
+    path.cubicTo(
+      center.dx - size * 0.5, center.dy,
+      center.dx - size * 0.5, center.dy - size * 0.4,
+      center.dx, center.dy - size * 0.2,
+    );
+    path.cubicTo(
+      center.dx + size * 0.5, center.dy - size * 0.4,
+      center.dx + size * 0.5, center.dy,
+      center.dx, center.dy + size * 0.3,
+    );
+
+    canvas.drawPath(path, paint);
+
+    // Pink outline for pop
+    final outlinePaint = Paint()
+      ..color = _pink.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawPath(path, outlinePaint);
+  }
+
+  void _drawSparkles(Canvas canvas, Size size) {
+    // White sparkles with glow
+    for (int i = 0; i < 6; i++) {
+      final x = 2 + _nextRandom() * (size.width - 4);
+      final y = 10 + _nextRandom() * (size.height - 20);
+      final sparkleSize = 2 + _nextRandom() * 2.5;
+
+      _drawSparkle(canvas, Offset(x, y), sparkleSize);
+    }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Glow
+    paint.color = _white.withValues(alpha: 0.4);
+    canvas.drawCircle(center, size * 1.5, paint);
+
+    // Core
+    paint.color = _white.withValues(alpha: 0.95);
+
+    // 4-point star
+    final path = Path();
+    path.moveTo(center.dx, center.dy - size);
+    path.lineTo(center.dx + size * 0.25, center.dy - size * 0.25);
+    path.lineTo(center.dx + size, center.dy);
+    path.lineTo(center.dx + size * 0.25, center.dy + size * 0.25);
+    path.lineTo(center.dx, center.dy + size);
+    path.lineTo(center.dx - size * 0.25, center.dy + size * 0.25);
+    path.lineTo(center.dx - size, center.dy);
+    path.lineTo(center.dx - size * 0.25, center.dy - size * 0.25);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawEdgeHighlights(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.stroke;
+
+    // White highlight on inner edge
+    paint.color = _white.withValues(alpha: 0.5);
+    paint.strokeWidth = 1.5;
+    canvas.drawLine(Offset(size.width - 1, 0), Offset(size.width - 1, size.height), paint);
+
+    // Darker shadow on outer edge
+    paint.color = Colors.black.withValues(alpha: 0.3);
+    paint.strokeWidth = 1.5;
+    canvas.drawLine(Offset(0.5, 0), Offset(0.5, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant RainbowSparklePainter oldDelegate) =>
+      oldDelegate.seed != seed;
+}
+
+/// Rainbow garland painter for Pride theme shelf dividers
+/// Bold horizontal rainbow stripes with hearts and celebratory elements
+class RainbowGarlandPainter extends CustomPainter {
+  final List<Color>? rainbowColors;
+  final Color? glowColor;
+  final Color? sparkleColor;
+  final int seed;
+
+  // Pride flag colors - BOLD
+  static const _red = Color(0xFFE53935);
+  static const _orange = Color(0xFFFF9800);
+  static const _yellow = Color(0xFFFFEB3B);
+  static const _green = Color(0xFF4CAF50);
+  static const _blue = Color(0xFF2196F3);
+  static const _purple = Color(0xFF9C27B0);
+  static const _pink = Color(0xFFE91E63);
+  static const _white = Color(0xFFFFFFFF);
+
+  RainbowGarlandPainter({
+    this.rainbowColors,
+    this.glowColor,
+    this.sparkleColor,
+    this.seed = 123,
+  });
+
+  double _seededRandom(int index) {
+    final hash = (seed * 31 + index * 17) & 0x7FFFFFFF;
+    return (hash % 10000) / 10000.0;
+  }
+
+  int _randomIndex = 0;
+
+  double _nextRandom() {
+    return _seededRandom(_randomIndex++);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _randomIndex = 0;
+    final colors = rainbowColors ?? [_red, _orange, _yellow, _green, _blue, _purple];
+
+    // Layer 1: BOLD rainbow stripes
+    _drawBoldRainbowStripes(canvas, size, colors);
+
+    // Layer 2: Heart garland - BIGGER hearts
+    _drawHeartGarland(canvas, size);
+
+    // Layer 3: Sparkles between hearts
+    _drawSparkles(canvas, size);
+
+    // Layer 4: Edge highlights
+    _drawEdgeHighlights(canvas, size);
+  }
+
+  void _drawBoldRainbowStripes(Canvas canvas, Size size, List<Color> colors) {
+    final stripeHeight = size.height / colors.length;
+    final paint = Paint();
+
+    // Draw BOLD, solid rainbow stripes
+    for (int i = 0; i < colors.length; i++) {
+      paint.color = colors[i].withValues(alpha: 0.9); // VERY bold
+      canvas.drawRect(
+        Rect.fromLTWH(0, i * stripeHeight, size.width, stripeHeight + 0.5),
+        paint,
+      );
+    }
+
+    // Subtle 3D effect
+    final topHighlight = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          _white.withValues(alpha: 0.25),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.3],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), topHighlight);
+  }
+
+  void _drawHeartGarland(Canvas canvas, Size size) {
+    final midY = size.height / 2;
+
+    // BIG white hearts with colored outlines - spaced along the divider
+    for (double x = 50; x < size.width - 30; x += 80) {
+      final yOffset = math.sin(x * 0.08) * 1.5;
+      _drawBigHeart(canvas, Offset(x, midY + yOffset), 8);
+    }
+  }
+
+  void _drawBigHeart(Canvas canvas, Offset center, double size) {
+    // Shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+
+    final shadowPath = Path();
+    shadowPath.moveTo(center.dx + 1, center.dy + size * 0.4);
+    shadowPath.cubicTo(
+      center.dx - size * 0.55 + 1, center.dy + size * 0.1 + 1,
+      center.dx - size * 0.55 + 1, center.dy - size * 0.35 + 1,
+      center.dx + 1, center.dy - size * 0.15 + 1,
+    );
+    shadowPath.cubicTo(
+      center.dx + size * 0.55 + 1, center.dy - size * 0.35 + 1,
+      center.dx + size * 0.55 + 1, center.dy + size * 0.1 + 1,
+      center.dx + 1, center.dy + size * 0.4,
+    );
+    canvas.drawPath(shadowPath, shadowPaint);
+
+    // Main white heart
+    final paint = Paint()
+      ..color = _white
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(center.dx, center.dy + size * 0.35);
+    path.cubicTo(
+      center.dx - size * 0.55, center.dy + size * 0.1,
+      center.dx - size * 0.55, center.dy - size * 0.35,
+      center.dx, center.dy - size * 0.15,
+    );
+    path.cubicTo(
+      center.dx + size * 0.55, center.dy - size * 0.35,
+      center.dx + size * 0.55, center.dy + size * 0.1,
+      center.dx, center.dy + size * 0.35,
+    );
+
+    canvas.drawPath(path, paint);
+
+    // Pink/magenta outline for pop
+    final outlinePaint = Paint()
+      ..color = _pink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(path, outlinePaint);
+
+    // Shine highlight
+    final highlightPaint = Paint()
+      ..color = _white.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(center.dx - size * 0.18, center.dy - size * 0.12),
+      size * 0.15,
+      highlightPaint,
+    );
+  }
+
+  void _drawSparkles(Canvas canvas, Size size) {
+    // White sparkles with glow
+    for (int i = 0; i < 12; i++) {
+      final x = 15 + _nextRandom() * (size.width - 30);
+      final y = 3 + _nextRandom() * (size.height - 6);
+      final sparkleSize = 2 + _nextRandom() * 2;
+
+      _drawSparkle(canvas, Offset(x, y), sparkleSize);
+    }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Glow
+    paint.color = _white.withValues(alpha: 0.5);
+    canvas.drawCircle(center, size * 1.3, paint);
+
+    // Core star
+    paint.color = _white.withValues(alpha: 0.95);
+    final path = Path();
+    path.moveTo(center.dx, center.dy - size);
+    path.lineTo(center.dx + size * 0.2, center.dy - size * 0.2);
+    path.lineTo(center.dx + size, center.dy);
+    path.lineTo(center.dx + size * 0.2, center.dy + size * 0.2);
+    path.lineTo(center.dx, center.dy + size);
+    path.lineTo(center.dx - size * 0.2, center.dy + size * 0.2);
+    path.lineTo(center.dx - size, center.dy);
+    path.lineTo(center.dx - size * 0.2, center.dy - size * 0.2);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawEdgeHighlights(Canvas canvas, Size size) {
+    // Top edge bright highlight
+    final topPaint = Paint()
+      ..color = _white.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(0, 1), Offset(size.width, 1), topPaint);
+
+    // Bottom edge shadow
+    final bottomPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(0, size.height - 1), Offset(size.width, size.height - 1), bottomPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant RainbowGarlandPainter oldDelegate) =>
+      oldDelegate.seed != seed;
+}
+
 /// Factory to get the appropriate painter based on theme
 class ShelfPainterFactory {
   static CustomPainter? getSidePanelPainter(ShelfTheme theme, {int seed = 42}) {
@@ -1442,6 +1840,13 @@ class ShelfPainterFactory {
         return FiligreeVerticalPainter(
           baseColor: theme.sidePanelMiddleColor,
           accentColor: theme.grainHighlightColor,
+          seed: seed,
+        );
+      case ShelfTextureType.rainbowSparkle:
+        return RainbowSparklePainter(
+          rainbowColors: theme.grainColors,
+          glowColor: theme.accentGlowColor,
+          sparkleColor: theme.starAccentColor,
           seed: seed,
         );
     }
@@ -1468,6 +1873,13 @@ class ShelfPainterFactory {
         return FiligreeHorizontalPainter(
           baseColor: theme.dividerMiddleColor,
           accentColor: theme.grainHighlightColor,
+          seed: seed,
+        );
+      case ShelfTextureType.rainbowSparkle:
+        return RainbowGarlandPainter(
+          rainbowColors: theme.grainColors,
+          glowColor: theme.accentGlowColor,
+          sparkleColor: theme.starAccentColor,
           seed: seed,
         );
     }

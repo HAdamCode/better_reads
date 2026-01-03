@@ -119,12 +119,13 @@ class BookcaseShelfRow extends StatelessWidget {
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [
-                                currentTheme.backPanelTopColor,
-                                currentTheme.backPanelMiddleColor,
-                                currentTheme.backPanelBottomColor,
-                              ],
-                              stops: const [0.0, 0.5, 1.0],
+                              colors: currentTheme.type == ShelfThemeType.pride && currentTheme.grainColors != null
+                                  ? currentTheme.grainColors!.map((c) => c.withValues(alpha: 0.4)).toList()
+                                  : [
+                                      currentTheme.backPanelTopColor,
+                                      currentTheme.backPanelMiddleColor,
+                                      currentTheme.backPanelBottomColor,
+                                    ],
                             ),
                           ),
                     child: Column(

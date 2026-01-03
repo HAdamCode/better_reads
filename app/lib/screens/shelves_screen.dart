@@ -128,47 +128,55 @@ class ShelvesScreen extends StatelessWidget {
               ],
             ),
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => CreateShelfDialog.show(context),
-            tooltip: 'Create Shelf',
-            elevation: 8,
-            backgroundColor: theme.dividerLightColor,
-            foregroundColor: theme.type == ShelfThemeType.minimalist
-                ? theme.textPrimaryColor
-                : theme.sidePanelMiddleColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: theme.sidePanelMiddleColor,
-                width: 2,
-              ),
-            ),
-            child: theme.type == ShelfThemeType.fantasy
-                ? ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      theme.textPrimaryColor, // Gold
-                      BlendMode.srcIn,
+          floatingActionButton: theme.type == ShelfThemeType.pride
+              ? _buildPrideFab(context)
+              : FloatingActionButton(
+                  onPressed: () => CreateShelfDialog.show(context),
+                  tooltip: 'Create Shelf',
+                  elevation: 8,
+                  backgroundColor: theme.type == ShelfThemeType.romance
+                      ? theme.backgroundColor // Deep burgundy for Romance
+                      : theme.dividerLightColor,
+                  foregroundColor: theme.type == ShelfThemeType.minimalist
+                      ? theme.textPrimaryColor
+                      : theme.type == ShelfThemeType.romance
+                          ? theme.iconColor // Gold for Romance
+                          : theme.sidePanelMiddleColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: theme.type == ShelfThemeType.romance
+                          ? theme.iconColor // Gold border for Romance
+                          : theme.sidePanelMiddleColor,
+                      width: 2,
                     ),
-                    child: Image.asset(
-                      'assets/images/image.png',
-                      width: 24,
-                      height: 24,
-                    ),
-                  )
-                : theme.type == ShelfThemeType.romance
-                    ? ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          theme.textPrimaryColor, // Velvet burgundy
-                          BlendMode.srcIn,
-                        ),
-                        child: Image.asset(
-                          'assets/images/rose_image.png',
-                          width: 52,
-                          height: 52,
-                        ),
-                      )
-                    : const Icon(Icons.add),
-          ),
+                  ),
+                  child: theme.type == ShelfThemeType.fantasy
+                      ? ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            theme.textPrimaryColor, // Gold
+                            BlendMode.srcIn,
+                          ),
+                          child: Image.asset(
+                            'assets/images/image.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                        )
+                      : theme.type == ShelfThemeType.romance
+                          ? ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                theme.iconColor, // Gold rose
+                                BlendMode.srcIn,
+                              ),
+                              child: Image.asset(
+                                'assets/images/rose_image.png',
+                                width: 52,
+                                height: 52,
+                              ),
+                            )
+                          : const Icon(Icons.add),
+                ),
         );
       },
     );
@@ -375,6 +383,45 @@ class ShelvesScreen extends StatelessWidget {
           // Wooden Shelf
           WoodenShelfDivider(margin: EdgeInsets.zero, theme: theme, seed: 'LentOut'.hashCode.abs() + 2),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPrideFab(BuildContext context) {
+    return GestureDetector(
+      onTap: () => CreateShelfDialog.show(context),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFE53935), // Red
+              Color(0xFFFF9800), // Orange
+              Color(0xFFFFEB3B), // Yellow
+              Color(0xFF4CAF50), // Green
+              Color(0xFF2196F3), // Blue
+              Color(0xFF9C27B0), // Purple
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE91E63).withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.favorite,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
       ),
     );
   }

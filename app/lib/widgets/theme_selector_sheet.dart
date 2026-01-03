@@ -23,37 +23,38 @@ class ThemeSelectorSheet extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
 
-              // Title
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  'Bookshelf Theme',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Bookshelf Theme',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
                 ),
-              ),
 
-              // Theme options
+              // Theme options - first row (Minimalist, Classic Wood, Fantasy)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: ShelfTheme.allThemes.map((theme) {
+                  children: ShelfTheme.allThemes.take(3).map((theme) {
                     final isSelected = themeProvider.currentThemeType == theme.type;
                     return _ThemeOption(
                       theme: theme,
@@ -67,8 +68,30 @@ class ThemeSelectorSheet extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
-            ],
+              const SizedBox(height: 12),
+
+              // Theme options - second row (Romance, Pride)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ShelfTheme.allThemes.skip(3).map((theme) {
+                    final isSelected = themeProvider.currentThemeType == theme.type;
+                    return _ThemeOption(
+                      theme: theme,
+                      isSelected: isSelected,
+                      onTap: () {
+                        themeProvider.setTheme(theme.type);
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         );
       },
@@ -118,11 +141,17 @@ class _ThemeOption extends StatelessWidget {
             const SizedBox(height: 8),
 
             // Theme name
-            Text(
-              theme.name,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
+            SizedBox(
+              width: 80,
+              child: Text(
+                theme.name,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Theme.of(context).primaryColor : Colors.black87,
+                ),
               ),
             ),
 
@@ -202,11 +231,12 @@ class _ThemeOption extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _miniBook(Colors.red.shade400),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 1),
                         _miniBook(Colors.blue.shade400),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 1),
                         _miniBook(Colors.green.shade400),
                       ],
                     ),
@@ -254,8 +284,8 @@ class _ThemeOption extends StatelessWidget {
 
   Widget _miniBook(Color color) {
     return Container(
-      width: 14,
-      height: 40,
+      width: 10,
+      height: 32,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(2),
