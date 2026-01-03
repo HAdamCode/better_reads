@@ -232,6 +232,7 @@ class BookcaseShelfRow extends StatelessWidget {
   Widget _buildAddButton(BuildContext context, ShelfTheme theme) {
     final isMinimalist = theme.type == ShelfThemeType.minimalist;
     final isFantasy = theme.type == ShelfThemeType.fantasy;
+    final isRomance = theme.type == ShelfThemeType.romance;
 
     final content = Container(
       width: 120,
@@ -252,30 +253,42 @@ class BookcaseShelfRow extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: theme.textPrimaryColor.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: isFantasy
-                ? ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      theme.textPrimaryColor,
-                      BlendMode.srcIn,
-                    ),
-                    child: Image.asset(
-                      'assets/images/image.png',
-                      width: 28,
-                      height: 28,
-                    ),
-                  )
-                : Icon(
-                    Icons.add,
-                    size: 28,
-                    color: theme.textPrimaryColor,
+          isRomance
+              ? ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    theme.textPrimaryColor,
+                    BlendMode.srcIn,
                   ),
-          ),
+                  child: Image.asset(
+                    'assets/images/rose_image.png',
+                    width: 72,
+                    height: 72,
+                  ),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: theme.textPrimaryColor.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: isFantasy
+                      ? ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            theme.textPrimaryColor,
+                            BlendMode.srcIn,
+                          ),
+                          child: Image.asset(
+                            'assets/images/image.png',
+                            width: 28,
+                            height: 28,
+                          ),
+                        )
+                      : Icon(
+                          Icons.add,
+                          size: 28,
+                          color: theme.textPrimaryColor,
+                        ),
+                ),
           const SizedBox(height: 10),
           Text(
             'Add Books',

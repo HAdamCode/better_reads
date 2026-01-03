@@ -695,331 +695,725 @@ class RunePatternPainter extends CustomPainter {
   bool shouldRepaint(covariant RunePatternPainter oldDelegate) => oldDelegate.seed != seed;
 }
 
-/// Vertical filigree/scrollwork painter for romance side panels - Elegant ornate library
+/// Vertical filigree/scrollwork painter for romance side panels
+/// Beauty and the Beast / Bridgerton / Classic Romantic Era aesthetic
 class FiligreeVerticalPainter extends CustomPainter {
   final Color? baseColor;
   final Color? accentColor;
+  final Color? shimmerColor;
   final int seed;
 
-  // Romance color palette
-  static const _blushLight = Color(0xFFFAF0EA);
-  static const _blushMid = Color(0xFFE8D4D4);
+  // Enhanced Romance color palette - Beauty and the Beast / Bridgerton
+  static const _champagneRose = Color(0xFFF5DFD7);
   static const _roseGold = Color(0xFFB76E79);
-  static const _deepRose = Color(0xFFA65D68);
-  static const _gold = Color(0xFFD4AF37);
+  static const _enchantedRose = Color(0xFF8B2942);
+  static const _velvetBurgundy = Color(0xFF5C1A2B);
+  static const _antiqueGold = Color(0xFFC9A84C);
+  static const _candlelightGold = Color(0xFFE8C87E);
+  static const _pearlWhite = Color(0xFFF8F4F0);
+  static const _shimmer = Color(0xFFFFFAF5);
 
-  FiligreeVerticalPainter({this.baseColor, this.accentColor, this.seed = 42});
+  FiligreeVerticalPainter({this.baseColor, this.accentColor, this.shimmerColor, this.seed = 42});
 
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(seed);
     final paint = Paint();
     final base = baseColor ?? _roseGold;
-    final accent = accentColor ?? _gold;
+    final accent = accentColor ?? _antiqueGold;
 
-    // Layer 1: Base gradient (lighter center, darker edges)
+    // Layer 1: Base gradient with silk sheen feel
     final baseGradient = LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
       colors: [
-        _deepRose.withValues(alpha: 0.25),
-        _blushMid.withValues(alpha: 0.1),
-        _deepRose.withValues(alpha: 0.25),
+        _velvetBurgundy.withValues(alpha: 0.2),
+        _champagneRose.withValues(alpha: 0.08),
+        _velvetBurgundy.withValues(alpha: 0.2),
       ],
     );
     paint.shader = baseGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
     paint.shader = null;
 
-    // Layer 2: Subtle vertical texture lines
-    paint.style = PaintingStyle.stroke;
-    paint.color = _deepRose.withValues(alpha: 0.15);
-    paint.strokeWidth = 0.3;
-    for (double x = 2; x < size.width - 1; x += 2 + random.nextDouble()) {
-      final path = Path();
-      path.moveTo(x, 0);
-      for (double y = 0; y < size.height; y += 10) {
-        path.lineTo(x + (random.nextDouble() - 0.5) * 0.5, y + 10);
-      }
-      canvas.drawPath(path, paint);
-    }
+    // Layer 2: Damask-inspired texture pattern
+    _drawDamaskTexture(canvas, size, random);
 
-    // Layer 3: Elegant vertical S-curves (scrollwork)
-    paint.color = base.withValues(alpha: 0.45);
-    paint.strokeWidth = 1.2;
+    // Layer 3: Baroque corners at top and bottom
+    _drawBaroqueCorner(canvas, 0, size.width, true, base, accent);
+    _drawBaroqueCorner(canvas, size.height, size.width, false, base, accent);
+
+    // Layer 4: Elegant baroque S-curves (enhanced scrollwork)
+    paint.style = PaintingStyle.stroke;
+    paint.color = base.withValues(alpha: 0.5);
+    paint.strokeWidth = 1.4;
     paint.strokeCap = StrokeCap.round;
 
-    for (double y = 8; y < size.height - 8; y += 22 + random.nextDouble() * 6) {
+    for (double y = 35; y < size.height - 35; y += 28 + random.nextDouble() * 8) {
       final path = Path();
       final startX = 3 + random.nextDouble() * 2;
       path.moveTo(startX, y);
 
-      // Main S-curve
+      // Main baroque S-curve with deeper swoops
       path.cubicTo(
-        size.width * 0.75, y + 5 + random.nextDouble() * 3,
-        size.width * 0.25, y + 14 + random.nextDouble() * 3,
-        startX + 1, y + 22,
+        size.width * 0.85, y + 6 + random.nextDouble() * 4,
+        size.width * 0.15, y + 18 + random.nextDouble() * 4,
+        startX + 1, y + 28,
       );
       canvas.drawPath(path, paint);
 
-      // Decorative flourish at apex
-      if (y % 44 < 22) {
-        _drawSmallFlourish(canvas, Offset(size.width * 0.6, y + 6), base, random);
-      }
+      // Secondary curl at end
+      paint.strokeWidth = 0.8;
+      paint.color = base.withValues(alpha: 0.35);
+      final curlPath = Path();
+      curlPath.moveTo(startX + 1, y + 28);
+      curlPath.quadraticBezierTo(
+        startX + 6, y + 32,
+        startX + 4, y + 36,
+      );
+      canvas.drawPath(curlPath, paint);
+      paint.strokeWidth = 1.4;
+      paint.color = base.withValues(alpha: 0.5);
     }
 
-    // Layer 4: Fine decorative tendrils
-    paint.color = base.withValues(alpha: 0.3);
-    paint.strokeWidth = 0.6;
-    for (double y = 20; y < size.height - 20; y += 30 + random.nextDouble() * 15) {
+    // Layer 5: Rose motifs (Beauty and the Beast inspired)
+    for (double y = 55; y < size.height - 55; y += 55 + random.nextDouble() * 10) {
+      final roseX = size.width * 0.5 + (random.nextDouble() - 0.5) * 4;
+      _drawStylizedRose(canvas, Offset(roseX, y), 8 + random.nextDouble() * 2, _enchantedRose, accent);
+    }
+
+    // Layer 6: Fine decorative tendrils with leaf endings
+    paint.color = base.withValues(alpha: 0.35);
+    paint.strokeWidth = 0.7;
+    for (double y = 25; y < size.height - 25; y += 35 + random.nextDouble() * 15) {
       final tendrilPath = Path();
       final startX = 2 + random.nextDouble() * 3;
       tendrilPath.moveTo(startX, y);
       tendrilPath.quadraticBezierTo(
-        size.width * 0.4, y - 3,
-        size.width * 0.5, y + 2,
+        size.width * 0.5, y - 4,
+        size.width * 0.6, y + 3,
       );
-      // Curl back
       tendrilPath.quadraticBezierTo(
+        size.width * 0.45, y + 7,
         size.width * 0.35, y + 5,
-        size.width * 0.25, y + 3,
       );
       canvas.drawPath(tendrilPath, paint);
+
+      // Small leaf at end
+      _drawTinyLeaf(canvas, Offset(size.width * 0.35, y + 5), 3, base);
     }
 
-    // Layer 5: Gold accent dots and small diamonds
-    paint.color = accent.withValues(alpha: 0.55);
+    // Layer 7: Gold diamonds with glow effect
     paint.style = PaintingStyle.fill;
-    for (double y = 12; y < size.height - 12; y += 28 + random.nextDouble() * 10) {
-      final x = 4 + random.nextDouble() * 5;
-      // Main dot
-      canvas.drawCircle(Offset(x, y), 1.8, paint);
-      // Small satellite dots
-      paint.color = accent.withValues(alpha: 0.35);
-      canvas.drawCircle(Offset(x + 2, y - 3), 0.8, paint);
-      canvas.drawCircle(Offset(x + 2, y + 3), 0.8, paint);
-      paint.color = accent.withValues(alpha: 0.55);
+    for (double y = 18; y < size.height - 18; y += 32 + random.nextDouble() * 12) {
+      final x = 5 + random.nextDouble() * 4;
+      // Glow behind diamond
+      paint.color = _candlelightGold.withValues(alpha: 0.2);
+      canvas.drawCircle(Offset(x, y), 4, paint);
+      // Main diamond
+      _drawSmallDiamond(canvas, x, y, 2.5, accent.withValues(alpha: 0.6));
+      // Satellite dots
+      paint.color = accent.withValues(alpha: 0.4);
+      canvas.drawCircle(Offset(x + 3, y - 4), 1.0, paint);
+      canvas.drawCircle(Offset(x + 3, y + 4), 1.0, paint);
     }
 
-    // Layer 6: Edge highlight
-    paint.style = PaintingStyle.stroke;
-    paint.color = _blushLight.withValues(alpha: 0.25);
-    paint.strokeWidth = 1.0;
-    canvas.drawLine(Offset(size.width - 1, 0), Offset(size.width - 1, size.height), paint);
+    // Layer 8: Magical sparkles (enchanted rose effect)
+    final sparkleRandom = math.Random(seed * 5 + 123);
+    for (int i = 0; i < 5; i++) {
+      final x = 3 + sparkleRandom.nextDouble() * (size.width - 6);
+      final y = 20 + sparkleRandom.nextDouble() * (size.height - 40);
+      _drawMagicalSparkle(canvas, Offset(x, y), 1.2 + sparkleRandom.nextDouble() * 0.8, shimmerColor ?? _shimmer);
+    }
 
-    // Layer 7: Deep shadow on outer edge
-    paint.color = _deepRose.withValues(alpha: 0.35);
-    paint.strokeWidth = 1.5;
+    // Layer 9: Pearl edge highlight with gradient fade
+    paint.style = PaintingStyle.stroke;
+    paint.color = _pearlWhite.withValues(alpha: 0.3);
+    paint.strokeWidth = 1.2;
+    canvas.drawLine(Offset(size.width - 1, 0), Offset(size.width - 1, size.height), paint);
+    paint.color = _pearlWhite.withValues(alpha: 0.15);
+    paint.strokeWidth = 2;
+    canvas.drawLine(Offset(size.width - 2.5, 0), Offset(size.width - 2.5, size.height), paint);
+
+    // Layer 10: Velvet shadow on outer edge
+    paint.color = _velvetBurgundy.withValues(alpha: 0.4);
+    paint.strokeWidth = 2;
     canvas.drawLine(Offset(0.5, 0), Offset(0.5, size.height), paint);
   }
 
-  void _drawSmallFlourish(Canvas canvas, Offset center, Color color, math.Random random) {
+  void _drawDamaskTexture(Canvas canvas, Size size, math.Random random) {
+    // Subtle diamond/lozenge pattern
+    for (double y = 10; y < size.height; y += 18) {
+      for (double x = 4; x < size.width - 2; x += 8) {
+        final offset = (y ~/ 18) % 2 == 0 ? 0.0 : 4.0;
+        _drawDamaskElement(canvas, Offset(x + offset, y), 2.5, _velvetBurgundy.withValues(alpha: 0.06));
+      }
+    }
+  }
+
+  void _drawDamaskElement(Canvas canvas, Offset center, double elementSize, Color color) {
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.25)
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(center.dx, center.dy - elementSize);
+    path.quadraticBezierTo(center.dx + elementSize * 0.6, center.dy, center.dx, center.dy + elementSize);
+    path.quadraticBezierTo(center.dx - elementSize * 0.6, center.dy, center.dx, center.dy - elementSize);
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawBaroqueCorner(Canvas canvas, double cornerY, double panelWidth, bool isTop, Color baseColor, Color gold) {
+    final paint = Paint()
+      ..color = baseColor.withValues(alpha: 0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7
+      ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round;
 
-    final size = 3 + random.nextDouble() * 2;
+    final yDir = isTop ? 1.0 : -1.0;
+    final startY = isTop ? cornerY + 5 : cornerY - 5;
 
-    // Tiny decorative curl
-    final path = Path();
-    path.moveTo(center.dx - size, center.dy);
-    path.quadraticBezierTo(
-      center.dx, center.dy - size * 0.8,
-      center.dx + size, center.dy,
+    // Main curling scroll from corner
+    final scrollPath = Path();
+    scrollPath.moveTo(2, startY);
+    scrollPath.cubicTo(
+      panelWidth * 0.7, startY + yDir * 10,
+      panelWidth * 0.3, startY + yDir * 20,
+      panelWidth * 0.55, startY + yDir * 28,
     );
+    // Curl back
+    scrollPath.quadraticBezierTo(
+      panelWidth * 0.75, startY + yDir * 25,
+      panelWidth * 0.6, startY + yDir * 20,
+    );
+    canvas.drawPath(scrollPath, paint);
+
+    // Secondary flourish
+    paint.strokeWidth = 0.9;
+    paint.color = baseColor.withValues(alpha: 0.35);
+    final flourishPath = Path();
+    flourishPath.moveTo(panelWidth * 0.55, startY + yDir * 15);
+    flourishPath.quadraticBezierTo(
+      panelWidth * 0.85, startY + yDir * 12,
+      panelWidth * 0.75, startY + yDir * 6,
+    );
+    canvas.drawPath(flourishPath, paint);
+
+    // Gold accent dots
+    paint.style = PaintingStyle.fill;
+    paint.color = gold.withValues(alpha: 0.55);
+    canvas.drawCircle(Offset(panelWidth * 0.55, startY + yDir * 28), 1.8, paint);
+    canvas.drawCircle(Offset(panelWidth * 0.6, startY + yDir * 20), 1.2, paint);
+  }
+
+  void _drawStylizedRose(Canvas canvas, Offset center, double roseSize, Color roseColor, Color goldCenter) {
+    final paint = Paint();
+
+    // Outer petals (4 overlapping curves in spiral)
+    for (int i = 0; i < 4; i++) {
+      final angle = i * (math.pi / 2) + 0.25;
+      final petalSize = roseSize * (0.95 - i * 0.12);
+
+      final petalPath = Path();
+      petalPath.moveTo(center.dx, center.dy);
+      petalPath.quadraticBezierTo(
+        center.dx + math.cos(angle) * petalSize,
+        center.dy + math.sin(angle) * petalSize,
+        center.dx + math.cos(angle + 0.9) * petalSize * 0.65,
+        center.dy + math.sin(angle + 0.9) * petalSize * 0.65,
+      );
+      petalPath.quadraticBezierTo(
+        center.dx + math.cos(angle + 1.3) * petalSize * 0.25,
+        center.dy + math.sin(angle + 1.3) * petalSize * 0.25,
+        center.dx,
+        center.dy,
+      );
+
+      paint.style = PaintingStyle.fill;
+      paint.color = roseColor.withValues(alpha: 0.3 + i * 0.05);
+      canvas.drawPath(petalPath, paint);
+
+      // Petal outline
+      paint.style = PaintingStyle.stroke;
+      paint.strokeWidth = 0.5;
+      paint.color = roseColor.withValues(alpha: 0.45);
+      canvas.drawPath(petalPath, paint);
+    }
+
+    // Inner spiral center
+    paint.style = PaintingStyle.fill;
+    paint.color = roseColor.withValues(alpha: 0.5);
+    canvas.drawCircle(center, roseSize * 0.18, paint);
+
+    // Gold accent dot at center (enchanted effect)
+    paint.color = goldCenter.withValues(alpha: 0.65);
+    canvas.drawCircle(center, roseSize * 0.08, paint);
+
+    // Two small leaves below the rose
+    final leafColor = _enchantedRose.withValues(alpha: 0.35);
+    for (int side = -1; side <= 1; side += 2) {
+      _drawTinyLeaf(canvas, Offset(center.dx + side * roseSize * 0.6, center.dy + roseSize * 0.7), roseSize * 0.35, Color.lerp(leafColor, _roseGold, 0.3)!);
+    }
+  }
+
+  void _drawTinyLeaf(Canvas canvas, Offset tip, double leafSize, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final leafPath = Path();
+    leafPath.moveTo(tip.dx, tip.dy);
+    leafPath.quadraticBezierTo(
+      tip.dx - leafSize * 0.5, tip.dy - leafSize * 0.3,
+      tip.dx, tip.dy - leafSize,
+    );
+    leafPath.quadraticBezierTo(
+      tip.dx + leafSize * 0.5, tip.dy - leafSize * 0.3,
+      tip.dx, tip.dy,
+    );
+    canvas.drawPath(leafPath, paint);
+  }
+
+  void _drawSmallDiamond(Canvas canvas, double cx, double cy, double diamondSize, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(cx, cy - diamondSize);
+    path.lineTo(cx + diamondSize * 0.6, cy);
+    path.lineTo(cx, cy + diamondSize);
+    path.lineTo(cx - diamondSize * 0.6, cy);
+    path.close();
     canvas.drawPath(path, paint);
+  }
+
+  void _drawMagicalSparkle(Canvas canvas, Offset center, double sparkleSize, Color color) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Outer soft glow
+    paint.color = color.withValues(alpha: 0.15);
+    canvas.drawCircle(center, sparkleSize * 2.5, paint);
+
+    // Mid glow
+    paint.color = color.withValues(alpha: 0.35);
+    canvas.drawCircle(center, sparkleSize * 1.2, paint);
+
+    // Bright core
+    paint.color = color.withValues(alpha: 0.85);
+    canvas.drawCircle(center, sparkleSize * 0.4, paint);
+
+    // 4-point star rays
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 0.4;
+    paint.color = color.withValues(alpha: 0.6);
+    for (int i = 0; i < 4; i++) {
+      final angle = i * (math.pi / 2);
+      canvas.drawLine(
+        Offset(center.dx + math.cos(angle) * sparkleSize * 0.6, center.dy + math.sin(angle) * sparkleSize * 0.6),
+        Offset(center.dx + math.cos(angle) * sparkleSize * 1.8, center.dy + math.sin(angle) * sparkleSize * 1.8),
+        paint,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant FiligreeVerticalPainter oldDelegate) => oldDelegate.seed != seed;
 }
 
-/// Horizontal filigree/scrollwork painter for romance shelf dividers - Elegant ornate library
+/// Horizontal filigree/scrollwork painter for romance shelf dividers
+/// Beauty and the Beast / Bridgerton / Classic Romantic Era aesthetic
 class FiligreeHorizontalPainter extends CustomPainter {
   final Color? baseColor;
   final Color? accentColor;
+  final Color? shimmerColor;
   final int seed;
 
-  // Romance color palette
-  static const _blushLight = Color(0xFFFAF0EA);
-  static const _blushMid = Color(0xFFE8D4D4);
+  // Enhanced Romance color palette - Beauty and the Beast / Bridgerton
   static const _roseGold = Color(0xFFB76E79);
-  static const _deepRose = Color(0xFFA65D68);
-  static const _gold = Color(0xFFD4AF37);
+  static const _enchantedRose = Color(0xFF8B2942);
+  static const _velvetBurgundy = Color(0xFF5C1A2B);
+  static const _antiqueGold = Color(0xFFC9A84C);
+  static const _candlelightGold = Color(0xFFE8C87E);
+  static const _pearlWhite = Color(0xFFF8F4F0);
+  static const _shimmer = Color(0xFFFFFAF5);
 
-  FiligreeHorizontalPainter({this.baseColor, this.accentColor, this.seed = 123});
+  FiligreeHorizontalPainter({this.baseColor, this.accentColor, this.shimmerColor, this.seed = 123});
 
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(seed);
     final paint = Paint();
     final base = baseColor ?? _roseGold;
-    final accent = accentColor ?? _gold;
+    final accent = accentColor ?? _antiqueGold;
+    final midY = size.height / 2;
 
-    // Layer 1: Base gradient
+    // Layer 1: Base gradient with candlelight warmth
     final baseGradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        _deepRose.withValues(alpha: 0.2),
-        _blushMid.withValues(alpha: 0.08),
-        _deepRose.withValues(alpha: 0.25),
+        _velvetBurgundy.withValues(alpha: 0.18),
+        _candlelightGold.withValues(alpha: 0.06),
+        _velvetBurgundy.withValues(alpha: 0.22),
       ],
     );
     paint.shader = baseGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
     paint.shader = null;
 
-    // Layer 2: Subtle horizontal texture lines
+    // Layer 2: Damask texture pattern
+    _drawDamaskTexture(canvas, size);
+
+    // Layer 3: Baroque scrollwork (enhanced waves with deeper curves)
     paint.style = PaintingStyle.stroke;
-    paint.color = _deepRose.withValues(alpha: 0.12);
-    paint.strokeWidth = 0.3;
-    for (double y = 2; y < size.height - 1; y += 1.5 + random.nextDouble() * 0.5) {
+    paint.color = base.withValues(alpha: 0.45);
+    paint.strokeWidth = 1.2;
+    paint.strokeCap = StrokeCap.round;
+
+    // Upper wave pattern with baroque curls
+    for (double x = 12; x < size.width - 12; x += 40 + random.nextDouble() * 12) {
       final path = Path();
-      path.moveTo(0, y);
-      for (double x = 0; x < size.width; x += 15) {
-        path.lineTo(x + 15, y + (random.nextDouble() - 0.5) * 0.3);
-      }
+      path.moveTo(x, midY);
+      path.cubicTo(
+        x + 10, midY - 4,
+        x + 30, midY - 4,
+        x + 40, midY,
+      );
       canvas.drawPath(path, paint);
+
+      // Decorative curl at peak
+      if ((x ~/ 40) % 2 == 0) {
+        _drawTinyCurl(canvas, Offset(x + 20, midY - 4.5), base, true);
+      }
     }
 
-    // Layer 3: Main scrollwork pattern (elegant waves)
-    paint.color = base.withValues(alpha: 0.4);
-    paint.strokeWidth = 1.0;
-    paint.strokeCap = StrokeCap.round;
+    // Lower wave pattern
+    for (double x = 32; x < size.width - 32; x += 40 + random.nextDouble() * 12) {
+      final path = Path();
+      path.moveTo(x, midY);
+      path.cubicTo(
+        x + 10, midY + 3.5,
+        x + 30, midY + 3.5,
+        x + 40, midY,
+      );
+      canvas.drawPath(path, paint);
+
+      if ((x ~/ 40) % 2 == 1) {
+        _drawTinyCurl(canvas, Offset(x + 20, midY + 4.5), base, false);
+      }
+    }
+
+    // Layer 4: ROSE GARLAND - Primary feature (Beauty and the Beast)
+    _drawRoseGarland(canvas, size, random);
+
+    // Layer 5: Connecting vine between roses
+    _drawConnectingVine(canvas, size, random);
+
+    // Layer 6: Gold diamonds with enhanced glow
+    for (double x = 55 + random.nextDouble() * 25; x < size.width - 55; x += 85 + random.nextDouble() * 30) {
+      _drawOrnamentedDiamond(canvas, x, midY, 3.5, accent);
+    }
+
+    // Layer 7: Pearl dots along borders (Bridgerton elegance)
+    for (double x = 18; x < size.width - 18; x += 22 + random.nextDouble() * 8) {
+      _drawPearlDot(canvas, Offset(x, 3.5), 1.2);
+      _drawPearlDot(canvas, Offset(x + 11, size.height - 3.5), 1.2);
+    }
+
+    // Layer 8: Ornate triple-line borders (thin-thick-thin)
+    paint.style = PaintingStyle.stroke;
+    // Top border
+    paint.color = base.withValues(alpha: 0.2);
+    paint.strokeWidth = 0.4;
+    canvas.drawLine(Offset(0, 1.5), Offset(size.width, 1.5), paint);
+    paint.color = base.withValues(alpha: 0.35);
+    paint.strokeWidth = 0.9;
+    canvas.drawLine(Offset(0, 3), Offset(size.width, 3), paint);
+    paint.color = base.withValues(alpha: 0.2);
+    paint.strokeWidth = 0.4;
+    canvas.drawLine(Offset(0, 4.5), Offset(size.width, 4.5), paint);
+
+    // Bottom border
+    paint.color = base.withValues(alpha: 0.2);
+    paint.strokeWidth = 0.4;
+    canvas.drawLine(Offset(0, size.height - 1.5), Offset(size.width, size.height - 1.5), paint);
+    paint.color = base.withValues(alpha: 0.35);
+    paint.strokeWidth = 0.9;
+    canvas.drawLine(Offset(0, size.height - 3), Offset(size.width, size.height - 3), paint);
+    paint.color = base.withValues(alpha: 0.2);
+    paint.strokeWidth = 0.4;
+    canvas.drawLine(Offset(0, size.height - 4.5), Offset(size.width, size.height - 4.5), paint);
+
+    // Layer 9: Edge flourishes at left and right
+    _drawEdgeFlourish(canvas, Offset(8, midY), 12, true, base, accent);
+    _drawEdgeFlourish(canvas, Offset(size.width - 8, midY), 12, false, base, accent);
+
+    // Layer 10: Magical sparkles near roses
+    final sparkleRandom = math.Random(seed * 7 + 789);
+    for (int i = 0; i < 6; i++) {
+      final x = 30 + sparkleRandom.nextDouble() * (size.width - 60);
+      final y = 3 + sparkleRandom.nextDouble() * (size.height - 6);
+      _drawMagicalSparkle(canvas, Offset(x, y), 1.0 + sparkleRandom.nextDouble() * 0.6, shimmerColor ?? _shimmer);
+    }
+
+    // Layer 11: Pearl sheen highlight at top
+    paint.color = _pearlWhite.withValues(alpha: 0.25);
+    paint.strokeWidth = 1.2;
+    canvas.drawLine(Offset(0, 0.8), Offset(size.width, 0.8), paint);
+
+    // Velvet shadow at bottom
+    paint.color = _velvetBurgundy.withValues(alpha: 0.35);
+    paint.strokeWidth = 1.5;
+    canvas.drawLine(Offset(0, size.height - 0.8), Offset(size.width, size.height - 0.8), paint);
+  }
+
+  void _drawDamaskTexture(Canvas canvas, Size size) {
+    for (double y = 4; y < size.height - 2; y += 6) {
+      for (double x = 8; x < size.width - 4; x += 12) {
+        final offset = (y ~/ 6) % 2 == 0 ? 0.0 : 6.0;
+        _drawDamaskElement(canvas, Offset(x + offset, y), 2, _velvetBurgundy.withValues(alpha: 0.05));
+      }
+    }
+  }
+
+  void _drawDamaskElement(Canvas canvas, Offset center, double elementSize, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(center.dx, center.dy - elementSize);
+    path.quadraticBezierTo(center.dx + elementSize * 0.5, center.dy, center.dx, center.dy + elementSize);
+    path.quadraticBezierTo(center.dx - elementSize * 0.5, center.dy, center.dx, center.dy - elementSize);
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawRoseGarland(Canvas canvas, Size size, math.Random random) {
+    final midY = size.height / 2;
+
+    // Draw roses along the center line
+    for (double x = 45 + random.nextDouble() * 20; x < size.width - 45; x += 90 + random.nextDouble() * 25) {
+      _drawStylizedRose(canvas, Offset(x, midY), 7 + random.nextDouble() * 1.5);
+    }
+  }
+
+  void _drawStylizedRose(Canvas canvas, Offset center, double roseSize) {
+    final paint = Paint();
+
+    // Outer petals (4 overlapping curves)
+    for (int i = 0; i < 4; i++) {
+      final angle = i * (math.pi / 2) + 0.3;
+      final petalSize = roseSize * (0.9 - i * 0.1);
+
+      final petalPath = Path();
+      petalPath.moveTo(center.dx, center.dy);
+      petalPath.quadraticBezierTo(
+        center.dx + math.cos(angle) * petalSize,
+        center.dy + math.sin(angle) * petalSize,
+        center.dx + math.cos(angle + 0.85) * petalSize * 0.6,
+        center.dy + math.sin(angle + 0.85) * petalSize * 0.6,
+      );
+      petalPath.quadraticBezierTo(
+        center.dx + math.cos(angle + 1.2) * petalSize * 0.2,
+        center.dy + math.sin(angle + 1.2) * petalSize * 0.2,
+        center.dx,
+        center.dy,
+      );
+
+      paint.style = PaintingStyle.fill;
+      paint.color = _enchantedRose.withValues(alpha: 0.28 + i * 0.05);
+      canvas.drawPath(petalPath, paint);
+
+      paint.style = PaintingStyle.stroke;
+      paint.strokeWidth = 0.4;
+      paint.color = _enchantedRose.withValues(alpha: 0.4);
+      canvas.drawPath(petalPath, paint);
+    }
+
+    // Center spiral
+    paint.style = PaintingStyle.fill;
+    paint.color = _enchantedRose.withValues(alpha: 0.45);
+    canvas.drawCircle(center, roseSize * 0.15, paint);
+
+    // Gold center dot
+    paint.color = _antiqueGold.withValues(alpha: 0.6);
+    canvas.drawCircle(center, roseSize * 0.06, paint);
+
+    // Two small leaves
+    for (int side = -1; side <= 1; side += 2) {
+      _drawTinyLeaf(canvas, Offset(center.dx + side * roseSize * 0.55, center.dy + roseSize * 0.6), roseSize * 0.3);
+    }
+  }
+
+  void _drawTinyLeaf(Canvas canvas, Offset tip, double leafSize) {
+    final paint = Paint()
+      ..color = _enchantedRose.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+
+    final leafPath = Path();
+    leafPath.moveTo(tip.dx, tip.dy);
+    leafPath.quadraticBezierTo(
+      tip.dx - leafSize * 0.4, tip.dy - leafSize * 0.25,
+      tip.dx, tip.dy - leafSize,
+    );
+    leafPath.quadraticBezierTo(
+      tip.dx + leafSize * 0.4, tip.dy - leafSize * 0.25,
+      tip.dx, tip.dy,
+    );
+    canvas.drawPath(leafPath, paint);
+  }
+
+  void _drawConnectingVine(Canvas canvas, Size size, math.Random random) {
+    final paint = Paint()
+      ..color = _roseGold.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round;
 
     final midY = size.height / 2;
 
-    // Upper wave pattern
-    for (double x = 15; x < size.width - 15; x += 35 + random.nextDouble() * 10) {
-      final path = Path();
-      path.moveTo(x, midY);
-      path.cubicTo(
-        x + 8, midY - 3.5,
-        x + 27, midY - 3.5,
-        x + 35, midY,
-      );
-      canvas.drawPath(path, paint);
-
-      // Small decorative curl at peak
-      if ((x ~/ 35) % 2 == 0) {
-        _drawTinyCurl(canvas, Offset(x + 17, midY - 4), base, true);
-      }
+    // Wavy connecting line
+    final vinePath = Path();
+    vinePath.moveTo(20, midY);
+    for (double x = 20; x < size.width - 20; x += 25) {
+      final wave = math.sin(x * 0.08 + seed) * 2;
+      vinePath.lineTo(x, midY + wave);
     }
+    canvas.drawPath(vinePath, paint);
 
-    // Lower wave pattern (offset)
-    for (double x = 30; x < size.width - 30; x += 35 + random.nextDouble() * 10) {
-      final path = Path();
-      path.moveTo(x, midY);
-      path.cubicTo(
-        x + 8, midY + 3,
-        x + 27, midY + 3,
-        x + 35, midY,
-      );
-      canvas.drawPath(path, paint);
-
-      // Small decorative curl at trough
-      if ((x ~/ 35) % 2 == 1) {
-        _drawTinyCurl(canvas, Offset(x + 17, midY + 4), base, false);
-      }
+    // Small leaf accents along vine
+    for (double x = 35; x < size.width - 35; x += 45 + random.nextDouble() * 20) {
+      final y = midY + math.sin(x * 0.08 + seed) * 2;
+      final dir = random.nextBool() ? 1.0 : -1.0;
+      _drawTinyLeaf(canvas, Offset(x, y + dir * 3), 2.5);
     }
+  }
 
-    // Layer 4: Gold accent elements
+  void _drawPearlDot(Canvas canvas, Offset center, double pearlSize) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Soft glow
+    paint.color = _pearlWhite.withValues(alpha: 0.2);
+    canvas.drawCircle(center, pearlSize * 1.5, paint);
+
+    // Main pearl
+    paint.color = _pearlWhite.withValues(alpha: 0.5);
+    canvas.drawCircle(center, pearlSize, paint);
+
+    // Highlight
+    paint.color = _shimmer.withValues(alpha: 0.7);
+    canvas.drawCircle(Offset(center.dx - pearlSize * 0.3, center.dy - pearlSize * 0.3), pearlSize * 0.35, paint);
+  }
+
+  void _drawEdgeFlourish(Canvas canvas, Offset position, double flourishSize, bool isLeft, Color baseColor, Color gold) {
+    final paint = Paint()
+      ..color = baseColor.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    final dir = isLeft ? 1.0 : -1.0;
+
+    // Curling scroll from edge
+    final flourishPath = Path();
+    flourishPath.moveTo(position.dx, position.dy);
+    flourishPath.cubicTo(
+      position.dx + dir * flourishSize * 0.6, position.dy - flourishSize * 0.3,
+      position.dx + dir * flourishSize * 0.8, position.dy + flourishSize * 0.2,
+      position.dx + dir * flourishSize * 0.5, position.dy + flourishSize * 0.4,
+    );
+    // Curl back
+    flourishPath.quadraticBezierTo(
+      position.dx + dir * flourishSize * 0.3, position.dy + flourishSize * 0.5,
+      position.dx + dir * flourishSize * 0.4, position.dy + flourishSize * 0.3,
+    );
+    canvas.drawPath(flourishPath, paint);
+
+    // Gold accent dot
     paint.style = PaintingStyle.fill;
-
-    // Main accent diamonds
-    for (double x = 45 + random.nextDouble() * 20; x < size.width - 45; x += 70 + random.nextDouble() * 25) {
-      _drawOrnamentedDiamond(canvas, x, midY, 3.0, accent);
-    }
-
-    // Small accent dots along the top and bottom edges
-    paint.color = accent.withValues(alpha: 0.4);
-    for (double x = 20; x < size.width - 20; x += 25 + random.nextDouble() * 10) {
-      canvas.drawCircle(Offset(x, 3), 1.0, paint);
-      canvas.drawCircle(Offset(x + 12, size.height - 3), 1.0, paint);
-    }
-
-    // Layer 5: Decorative border lines
-    paint.style = PaintingStyle.stroke;
-    paint.color = base.withValues(alpha: 0.3);
-    paint.strokeWidth = 0.8;
-
-    // Double line at top
-    canvas.drawLine(Offset(0, 1.5), Offset(size.width, 1.5), paint);
-    paint.color = base.withValues(alpha: 0.15);
-    paint.strokeWidth = 0.5;
-    canvas.drawLine(Offset(0, 3.5), Offset(size.width, 3.5), paint);
-
-    // Double line at bottom
-    paint.color = base.withValues(alpha: 0.3);
-    paint.strokeWidth = 0.8;
-    canvas.drawLine(Offset(0, size.height - 1.5), Offset(size.width, size.height - 1.5), paint);
-    paint.color = base.withValues(alpha: 0.15);
-    paint.strokeWidth = 0.5;
-    canvas.drawLine(Offset(0, size.height - 3.5), Offset(size.width, size.height - 3.5), paint);
-
-    // Layer 6: Top highlight
-    paint.color = _blushLight.withValues(alpha: 0.2);
-    paint.strokeWidth = 1.0;
-    canvas.drawLine(Offset(0, 1), Offset(size.width, 1), paint);
-
-    // Layer 7: Bottom shadow
-    paint.color = _deepRose.withValues(alpha: 0.3);
-    paint.strokeWidth = 1.2;
-    canvas.drawLine(Offset(0, size.height - 1), Offset(size.width, size.height - 1), paint);
+    paint.color = gold.withValues(alpha: 0.5);
+    canvas.drawCircle(Offset(position.dx + dir * flourishSize * 0.5, position.dy + flourishSize * 0.4), 1.5, paint);
   }
 
   void _drawTinyCurl(Canvas canvas, Offset center, Color color, bool upward) {
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.25)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.6
+      ..strokeWidth = 0.7
       ..strokeCap = StrokeCap.round;
 
     final dir = upward ? -1.0 : 1.0;
     final path = Path();
-    path.moveTo(center.dx - 3, center.dy);
+    path.moveTo(center.dx - 4, center.dy);
     path.quadraticBezierTo(
-      center.dx, center.dy + dir * 2,
-      center.dx + 3, center.dy,
+      center.dx, center.dy + dir * 2.5,
+      center.dx + 4, center.dy,
     );
     canvas.drawPath(path, paint);
   }
 
-  void _drawOrnamentedDiamond(Canvas canvas, double cx, double cy, double size, Color color) {
+  void _drawOrnamentedDiamond(Canvas canvas, double cx, double cy, double diamondSize, Color color) {
     final paint = Paint();
 
-    // Outer glow
-    paint.color = color.withValues(alpha: 0.2);
+    // Outer candlelight glow
+    paint.color = _candlelightGold.withValues(alpha: 0.2);
     paint.style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy), size * 1.5, paint);
+    canvas.drawCircle(Offset(cx, cy), diamondSize * 2, paint);
 
     // Main diamond
-    paint.color = color.withValues(alpha: 0.5);
+    paint.color = color.withValues(alpha: 0.55);
     final path = Path();
-    path.moveTo(cx, cy - size);
-    path.lineTo(cx + size * 0.6, cy);
-    path.lineTo(cx, cy + size);
-    path.lineTo(cx - size * 0.6, cy);
+    path.moveTo(cx, cy - diamondSize);
+    path.lineTo(cx + diamondSize * 0.6, cy);
+    path.lineTo(cx, cy + diamondSize);
+    path.lineTo(cx - diamondSize * 0.6, cy);
     path.close();
     canvas.drawPath(path, paint);
 
     // Inner highlight
-    paint.color = color.withValues(alpha: 0.7);
+    paint.color = color.withValues(alpha: 0.75);
     final innerPath = Path();
-    innerPath.moveTo(cx, cy - size * 0.4);
-    innerPath.lineTo(cx + size * 0.25, cy);
-    innerPath.lineTo(cx, cy + size * 0.4);
-    innerPath.lineTo(cx - size * 0.25, cy);
+    innerPath.moveTo(cx, cy - diamondSize * 0.4);
+    innerPath.lineTo(cx + diamondSize * 0.25, cy);
+    innerPath.lineTo(cx, cy + diamondSize * 0.4);
+    innerPath.lineTo(cx - diamondSize * 0.25, cy);
     innerPath.close();
     canvas.drawPath(innerPath, paint);
 
-    // Tiny dots around the diamond
-    paint.color = color.withValues(alpha: 0.35);
-    canvas.drawCircle(Offset(cx - size * 1.2, cy), 0.8, paint);
-    canvas.drawCircle(Offset(cx + size * 1.2, cy), 0.8, paint);
+    // Satellite dots
+    paint.color = color.withValues(alpha: 0.4);
+    canvas.drawCircle(Offset(cx - diamondSize * 1.4, cy), 1.0, paint);
+    canvas.drawCircle(Offset(cx + diamondSize * 1.4, cy), 1.0, paint);
+  }
+
+  void _drawMagicalSparkle(Canvas canvas, Offset center, double sparkleSize, Color color) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Outer glow
+    paint.color = color.withValues(alpha: 0.12);
+    canvas.drawCircle(center, sparkleSize * 2.2, paint);
+
+    // Mid glow
+    paint.color = color.withValues(alpha: 0.3);
+    canvas.drawCircle(center, sparkleSize * 1.0, paint);
+
+    // Core
+    paint.color = color.withValues(alpha: 0.8);
+    canvas.drawCircle(center, sparkleSize * 0.35, paint);
+
+    // Star rays
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 0.35;
+    paint.color = color.withValues(alpha: 0.5);
+    for (int i = 0; i < 4; i++) {
+      final angle = i * (math.pi / 2);
+      canvas.drawLine(
+        Offset(center.dx + math.cos(angle) * sparkleSize * 0.5, center.dy + math.sin(angle) * sparkleSize * 0.5),
+        Offset(center.dx + math.cos(angle) * sparkleSize * 1.5, center.dy + math.sin(angle) * sparkleSize * 1.5),
+        paint,
+      );
+    }
   }
 
   @override

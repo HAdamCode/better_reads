@@ -155,7 +155,19 @@ class ShelvesScreen extends StatelessWidget {
                       height: 24,
                     ),
                   )
-                : const Icon(Icons.add),
+                : theme.type == ShelfThemeType.romance
+                    ? ColorFiltered(
+                        colorFilter: ColorFilter.mode(
+                          theme.textPrimaryColor, // Velvet burgundy
+                          BlendMode.srcIn,
+                        ),
+                        child: Image.asset(
+                          'assets/images/rose_image.png',
+                          width: 52,
+                          height: 52,
+                        ),
+                      )
+                    : const Icon(Icons.add),
           ),
         );
       },

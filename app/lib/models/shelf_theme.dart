@@ -148,35 +148,37 @@ class ShelfTheme {
         starAccentColor: Color(0xFFE8F4FF), // Bright silvery starlight
       );
 
-  /// Romance theme - Beauty and the Beast, Bridgerton, contemporary romance
-  /// Elegant rose gold, blush pink, cream with ornate filigree details
+  /// Romance theme - Beauty and the Beast, Bridgerton, classic romantic era
+  /// Enchanted library with rose motifs, baroque gilded details, magical sparkles
   factory ShelfTheme.romance() => const ShelfTheme(
         type: ShelfThemeType.romance,
         name: 'Romance',
         description: 'Elegant & enchanting',
         backgroundColor: Color(0xFFFDF6F0), // Soft cream
-        backPanelTopColor: Color(0xFFF5E6E0), // Blush tint
+        backPanelTopColor: Color(0xFFF5DFD7), // Champagne rose (warmer)
         backPanelMiddleColor: Color(0xFFFAF0EA), // Warm cream
-        backPanelBottomColor: Color(0xFFF5E6E0),
-        sidePanelInnerColor: Color(0xFFDEB5A0), // Dusty rose
+        backPanelBottomColor: Color(0xFFF5E6E0), // Blush tint
+        sidePanelInnerColor: Color(0xFFC9A090), // Deeper dusty rose
         sidePanelMiddleColor: Color(0xFFB76E79), // Rose gold
         sidePanelOuterColor: Color(0xFFE8C4C4), // Soft blush
-        dividerDarkColor: Color(0xFFA65D68), // Deep rose
+        dividerDarkColor: Color(0xFF8B2942), // Enchanted rose (dramatic)
         dividerMiddleColor: Color(0xFFB76E79), // Rose gold
-        dividerLightColor: Color(0xFFE8D4D4), // Light blush
-        textPrimaryColor: Color(0xFF722F37), // Burgundy/wine
-        textSecondaryColor: Color(0xB3722F37), // 70% opacity burgundy
+        dividerLightColor: Color(0xFFF5DFD7), // Champagne rose
+        textPrimaryColor: Color(0xFF5C1A2B), // Velvet burgundy (richer)
+        textSecondaryColor: Color(0xB35C1A2B), // 70% opacity velvet burgundy
         iconColor: Color(0xFFB76E79), // Rose gold
-        sidePanelWidth: 14,
-        dividerHeight: 14,
+        sidePanelWidth: 16, // Wider for ornate details
+        dividerHeight: 16, // Taller for rose motifs
         textureType: ShelfTextureType.ornateFiligree,
         grainColors: [
           Color(0xFFD4A5A5), // Dusty rose
           Color(0xFFE8C4C4), // Soft blush
           Color(0xFFC9A0A0), // Muted rose
+          Color(0xFFF5DFD7), // Champagne rose
         ],
-        grainHighlightColor: Color(0xFFD4AF37), // Gold filigree accents
-        accentGlowColor: Color(0xFFFFD700), // Warm gold glow
+        grainHighlightColor: Color(0xFFC9A84C), // Antique gold (warmer, aged)
+        accentGlowColor: Color(0xFFE8C87E), // Candlelight gold (warm glow)
+        starAccentColor: Color(0xFFFFFAF5), // Shimmer for magical sparkles
       );
 
   static ShelfTheme fromType(ShelfThemeType type) {
