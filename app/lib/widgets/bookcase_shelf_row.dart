@@ -278,18 +278,38 @@ class BookcaseShelfRow extends StatelessWidget {
                         height: 64,
                       ),
                     )
-                  : Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: theme.textPrimaryColor.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: 28,
-                        color: theme.textPrimaryColor,
-                      ),
-                    ),
+                  : theme.type == ShelfThemeType.pride
+                      ? ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFFE53935), // Red
+                              Color(0xFFFF9800), // Orange
+                              Color(0xFFFFEB3B), // Yellow
+                              Color(0xFF4CAF50), // Green
+                              Color(0xFF2196F3), // Blue
+                              Color(0xFF9C27B0), // Purple
+                            ],
+                          ).createShader(bounds),
+                          child: const Icon(
+                            Icons.favorite,
+                            size: 64,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: theme.textPrimaryColor.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            size: 28,
+                            color: theme.textPrimaryColor,
+                          ),
+                        ),
           const SizedBox(height: 10),
           Text(
             'Add Books',
