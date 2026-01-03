@@ -36,7 +36,7 @@ type UserBook {
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
   pagesRead: Int
-  addedAt: AWSDateTime!
+  addedAt: AWSDateTime
   updatedAt: AWSDateTime!
 }
 

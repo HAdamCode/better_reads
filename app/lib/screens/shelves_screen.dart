@@ -40,13 +40,6 @@ class _ShelvesScreenState extends State<ShelvesScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Library'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Create Shelf',
-            onPressed: () => CreateShelfDialog.show(context),
-          ),
-        ],
         bottom: TabBar(
           controller: _mainTabController,
           tabs: const [
@@ -63,6 +56,22 @@ class _ShelvesScreenState extends State<ShelvesScreen>
           _buildCustomShelvesTab(),
           _buildLentOutTab(),
         ],
+      ),
+      floatingActionButton: AnimatedBuilder(
+        animation: _mainTabController,
+        builder: (context, child) {
+          // Only show FAB on Custom Shelves tab
+          final showFab = _mainTabController.index == 1;
+          return AnimatedScale(
+            scale: showFab ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: FloatingActionButton(
+              onPressed: () => CreateShelfDialog.show(context),
+              tooltip: 'Create Shelf',
+              child: const Icon(Icons.add),
+            ),
+          );
+        },
       ),
     );
   }

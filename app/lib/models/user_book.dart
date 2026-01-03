@@ -107,7 +107,11 @@ class UserBook {
           ? DateTime.parse(json['finishedAt'] as String)
           : null,
       pagesRead: json['pagesRead'] as int?,
-      addedAt: DateTime.parse(json['addedAt'] as String),
+      addedAt: json['addedAt'] != null
+          ? DateTime.parse(json['addedAt'] as String)
+          : (json['updatedAt'] != null
+              ? DateTime.parse(json['updatedAt'] as String)
+              : DateTime.now()),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       book: json['book'] != null
           ? Book.fromJson(json['book'] as Map<String, dynamic>)

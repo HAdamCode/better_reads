@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'providers/auth_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/discover_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/shelves_screen.dart';
 import 'screens/profile_screen.dart';
@@ -73,7 +73,7 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
             path: '/',
             pageBuilder: (context, state) => MaterialPage(
               key: state.pageKey,
-              child: const HomeScreen(),
+              child: const DiscoverScreen(),
             ),
           ),
           GoRoute(
@@ -189,14 +189,14 @@ class ScaffoldWithNavBar extends StatelessWidget {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: 'Discover',
           ),
           NavigationDestination(
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search),
-            label: 'Discover',
+            label: 'Search',
           ),
           NavigationDestination(
             icon: Icon(Icons.auto_stories_outlined),

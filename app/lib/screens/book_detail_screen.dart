@@ -6,6 +6,7 @@ import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
 import '../providers/lending_provider.dart';
+import '../services/book_service.dart';
 import '../utils/theme.dart';
 import '../widgets/shelf_picker_sheet.dart';
 import '../widgets/lend_book_dialog.dart';
@@ -24,6 +25,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Book? _book;
   bool _isLoading = true;
   String? _error;
+  bool _descriptionExpanded = false;
 
   @override
   void initState() {
@@ -32,7 +34,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Future<void> _loadBook() async {
-    // First check if we have the book in search results or user books
     final provider = context.read<BooksProvider>();
 
     // Check search results
@@ -55,13 +56,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       return;
     }
 
-    // Check trending
+    // Check trending - use as placeholder while fetching full details
     final fromTrending = provider.trendingBooks.where((b) => b.isbn == widget.isbn).firstOrNull;
     if (fromTrending != null) {
-      setState(() {
-        _book = fromTrending;
-        _isLoading = false;
-      });
+      setState(() => _book = fromTrending);
+      _fetchFullDetailsForTrending(fromTrending);
       return;
     }
 
@@ -71,9 +70,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       setState(() {
         _book = book;
         _isLoading = false;
-        if (book == null) {
-          _error = 'Book not found';
-        }
+        if (book == null) _error = 'Book not found';
       });
     } catch (e) {
       setState(() {
@@ -83,11 +80,32 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     }
   }
 
+  Future<void> _fetchFullDetailsForTrending(Book trendingBook) async {
+    final bookService = BookService();
+    try {
+      final query = '${trendingBook.title} ${trendingBook.authors.first}';
+      final results = await bookService.searchBooks(query, limit: 5);
+
+      if (results.isNotEmpty) {
+        final match = results.firstWhere(
+          (b) => b.title.toLowerCase() == trendingBook.title.toLowerCase(),
+          orElse: () => results.first,
+        );
+        if (mounted) setState(() { _book = match; _isLoading = false; });
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch full details: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_isLoading && _book == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(backgroundColor: Colors.transparent),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -116,29 +134,38 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context),
+          _buildHeroSection(context),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildBookInfo(context),
-                  const SizedBox(height: 24),
-                  _buildShelfActions(context),
-                  const SizedBox(height: 16),
-                  _buildLendingSection(context),
-                  const SizedBox(height: 24),
-                  if (_book!.description != null) ...[
-                    _buildDescription(context),
-                    const SizedBox(height: 24),
-                  ],
-                  if (_book!.subjects?.isNotEmpty == true) ...[
-                    _buildSubjects(context),
-                    const SizedBox(height: 24),
-                  ],
-                  _buildDetails(context),
-                ],
+            child: Transform.translate(
+              offset: const Offset(0, -30),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 36, 20, 40),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTitleSection(context),
+                      const SizedBox(height: 20),
+                      _buildQuickStats(context),
+                      const SizedBox(height: 24),
+                      _buildActionButtons(context),
+                      const SizedBox(height: 24),
+                      _buildUserSection(context),
+                      if (_book!.description != null) ...[
+                        const SizedBox(height: 24),
+                        _buildDescription(context),
+                      ],
+                      if (_book!.subjects?.isNotEmpty == true) ...[
+                        const SizedBox(height: 24),
+                        _buildGenres(context),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -147,173 +174,412 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildHeroSection(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 340,
       pinned: true,
+      backgroundColor: AppTheme.primaryColor,
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+        ),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
               colors: [
-                Theme.of(context).colorScheme.primaryContainer,
-                Theme.of(context).scaffoldBackgroundColor,
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withValues(alpha: 0.8),
+                AppTheme.secondaryColor.withValues(alpha: 0.6),
               ],
             ),
           ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 60),
-              child: widget.heroTag != null
-                  ? Hero(
-                      tag: widget.heroTag!,
-                      child: _buildCover(context),
-                    )
-                  : _buildCover(context),
-            ),
+          child: Stack(
+            children: [
+              // Background pattern
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.05,
+                  child: Image.network(
+                    _book!.coverUrl ?? '',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(),
+                  ),
+                ),
+              ),
+              // Book cover
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 60, bottom: 50),
+                  child: widget.heroTag != null
+                      ? Hero(tag: widget.heroTag!, child: _buildCover())
+                      : _buildCover(),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCover(BuildContext context) {
-    if (_book!.coverUrl == null) {
-      return Container(
-        width: 140,
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          Icons.book,
-          size: 64,
-          color: Colors.grey.shade500,
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: CachedNetworkImage(
-        imageUrl: _book!.coverUrl!,
-        width: 140,
-        height: 200,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(
-          color: Colors.grey.shade300,
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        errorWidget: (_, __, ___) => Container(
-          color: Colors.grey.shade300,
-          child: Icon(Icons.book, color: Colors.grey.shade500),
-        ),
+  Widget _buildCover() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: _book!.coverUrl != null
+            ? CachedNetworkImage(
+                imageUrl: _book!.coverUrl!,
+                width: 160,
+                height: 240,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _buildCoverPlaceholder(),
+                errorWidget: (_, __, ___) => _buildCoverPlaceholder(),
+              )
+            : _buildCoverPlaceholder(),
       ),
     );
   }
 
-  Widget _buildBookInfo(BuildContext context) {
+  Widget _buildCoverPlaceholder() {
+    return Container(
+      width: 160,
+      height: 240,
+      color: Colors.grey.shade300,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.menu_book, size: 48, color: Colors.grey.shade500),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _book!.title,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTitleSection(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           _book!.title,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
               ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          _book!.authorsString,
+          'by ${_book!.authorsString}',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey.shade600,
+                color: AppTheme.textMuted,
+                fontWeight: FontWeight.w500,
               ),
           textAlign: TextAlign.center,
         ),
         if (_book!.averageRating != null) ...[
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ...List.generate(5, (index) {
-                final rating = _book!.averageRating!;
-                if (index < rating.floor()) {
-                  return Icon(Icons.star, color: Colors.amber.shade600, size: 20);
-                } else if (index < rating) {
-                  return Icon(Icons.star_half, color: Colors.amber.shade600, size: 20);
-                }
-                return Icon(Icons.star_outline, color: Colors.grey.shade400, size: 20);
-              }),
-              const SizedBox(width: 8),
-              Text(
-                _book!.averageRating!.toStringAsFixed(1),
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              if (_book!.ratingsCount != null) ...[
-                const SizedBox(width: 4),
-                Text(
-                  '(${_formatCount(_book!.ratingsCount!)})',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ],
-            ],
-          ),
+          const SizedBox(height: 16),
+          _buildRatingDisplay(),
         ],
       ],
     );
   }
 
-  Widget _buildShelfActions(BuildContext context) {
-    return Consumer2<BooksProvider, ShelvesProvider>(
-      builder: (context, booksProvider, shelvesProvider, _) {
-        final currentStatus = booksProvider.getBookShelf(_book!.isbn);
-        final userBook = booksProvider.getUserBook(_book!.isbn);
-        final isOnAnyShelf = userBook != null;
-        final hasReadingStatus = currentStatus != null && currentStatus != ReadingStatus.none;
+  Widget _buildRatingDisplay() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ...List.generate(5, (index) {
+            final rating = _book!.averageRating!;
+            IconData icon;
+            if (index < rating.floor()) {
+              icon = Icons.star_rounded;
+            } else if (index < rating) {
+              icon = Icons.star_half_rounded;
+            } else {
+              icon = Icons.star_outline_rounded;
+            }
+            return Icon(icon, color: Colors.amber.shade700, size: 22);
+          }),
+          const SizedBox(width: 10),
+          Text(
+            _book!.averageRating!.toStringAsFixed(1),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber.shade800,
+            ),
+          ),
+          if (_book!.ratingsCount != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              '(${_formatCount(_book!.ratingsCount!)})',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.amber.shade700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!isOnAnyShelf) ...[
-                  FilledButton.icon(
-                    onPressed: () => _addBookAndShowPicker(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add to Shelf'),
+  Widget _buildQuickStats(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          if (_book!.pageCount != null)
+            _buildStatItem(Icons.auto_stories_outlined, '${_book!.pageCount}', 'Pages'),
+          if (_book!.publishedDate != null)
+            _buildStatItem(Icons.calendar_today_outlined, _book!.publishedDate!, 'Published'),
+          if (_book!.averageRating != null)
+            _buildStatItem(Icons.star_outline_rounded, _book!.averageRating!.toStringAsFixed(1), 'Rating'),
+          _buildStatItem(Icons.qr_code, _book!.isbn.length > 10 ? 'ISBN-13' : 'ISBN-10', 'Format'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Icon(icon, color: AppTheme.primaryColor, size: 24),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: AppTheme.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Consumer<BooksProvider>(
+      builder: (context, provider, _) {
+        final userBook = provider.getUserBook(_book!.isbn);
+        final isOnShelf = userBook != null;
+        final status = userBook?.readingStatus;
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: FilledButton.icon(
+                onPressed: () {
+                  if (!isOnShelf) {
+                    provider.addBookToShelf(_book!, ReadingStatus.wantToRead);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Added to Want to Read')),
+                    );
+                  } else {
+                    ShelfPickerSheet.show(context, _book!.isbn);
+                  }
+                },
+                icon: Icon(isOnShelf ? _getShelfIcon(status!) : Icons.add_rounded),
+                label: Text(isOnShelf ? status!.displayName : 'Want to Read'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ] else ...[
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: () => ShelfPickerSheet.show(context, _book!.isbn),
+                icon: Icon(Icons.bookmark_add_outlined, color: AppTheme.primaryColor),
+                padding: const EdgeInsets.all(14),
+              ),
+            ),
+            if (isOnShelf) ...[
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    provider.removeBookFromShelf(_book!.isbn);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Removed from shelves')),
+                    );
+                  },
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  padding: const EdgeInsets.all(14),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildUserSection(BuildContext context) {
+    return Consumer3<BooksProvider, ShelvesProvider, LendingProvider>(
+      builder: (context, booksProvider, shelvesProvider, lendingProvider, _) {
+        final userBook = booksProvider.getUserBook(_book!.isbn);
+        if (userBook == null) return const SizedBox.shrink();
+
+        final activeLoan = lendingProvider.getActiveLoanForBook(_book!.isbn);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Your Rating
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => ShelfPickerSheet.show(context, _book!.isbn),
-                          icon: Icon(hasReadingStatus ? _getShelfIcon(currentStatus) : Icons.shelves),
-                          label: Text(hasReadingStatus ? currentStatus.displayName : 'Manage Shelves'),
-                        ),
-                      ),
+                      Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 20),
                       const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () {
-                          booksProvider.removeBookFromShelf(_book!.isbn);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Removed from all shelves')),
-                          );
-                        },
-                        icon: const Icon(Icons.delete_outline),
-                        color: Colors.red,
+                      Text(
+                        'Your Rating',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ],
                   ),
-                  // Show custom shelves badges
-                  if (userBook.customShelfIds.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final rating = userBook.rating ?? 0;
+                      return GestureDetector(
+                        onTap: () => booksProvider.updateBookRating(_book!.isbn, index + 1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            index < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: index < rating ? Colors.amber.shade600 : Colors.grey.shade400,
+                            size: 36,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  if (userBook.rating != null) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'You rated this ${userBook.rating} star${userBook.rating! > 1 ? 's' : ''}',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Custom Shelves
+            if (userBook.customShelfIds.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.folder_outlined, color: AppTheme.primaryColor, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'On Your Shelves',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -323,122 +589,76 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                         if (shelf == null) return const SizedBox.shrink();
                         return Chip(
                           label: Text(shelf.name),
-                          avatar: Icon(Icons.folder_outlined, size: 16, color: AppTheme.primaryColor),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          onDeleted: () {
-                            booksProvider.removeFromCustomShelf(_book!.isbn, shelfId);
-                          },
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          onDeleted: () => booksProvider.removeFromCustomShelf(_book!.isbn, shelfId),
                         );
                       }).toList(),
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  Text(
-                    'Your Rating',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      final rating = userBook.rating ?? 0;
-                      return IconButton(
-                        onPressed: () {
-                          booksProvider.updateBookRating(_book!.isbn, index + 1);
-                        },
-                        icon: Icon(
-                          index < rating ? Icons.star : Icons.star_outline,
-                          color: index < rating
-                              ? Colors.amber.shade600
-                              : Colors.grey.shade400,
-                          size: 32,
-                        ),
-                      );
-                    }),
+                ),
+              ),
+            ],
+
+            // Lending
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
                   ),
                 ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _addBookAndShowPicker(BuildContext context) {
-    // First add the book with 'none' status so it exists in userBooks
-    context.read<BooksProvider>().addBookToShelf(_book!, ReadingStatus.none);
-    // Then show the shelf picker
-    ShelfPickerSheet.show(context, _book!.isbn);
-  }
-
-  IconData _getShelfIcon(ReadingStatus status) {
-    switch (status) {
-      case ReadingStatus.wantToRead:
-        return Icons.bookmark_outline;
-      case ReadingStatus.currentlyReading:
-        return Icons.menu_book;
-      case ReadingStatus.read:
-        return Icons.check_circle;
-      case ReadingStatus.none:
-        return Icons.shelves;
-    }
-  }
-
-  Widget _buildLendingSection(BuildContext context) {
-    return Consumer2<BooksProvider, LendingProvider>(
-      builder: (context, booksProvider, lendingProvider, _) {
-        final userBook = booksProvider.getUserBook(_book!.isbn);
-
-        // Only show lending section if book is on a shelf
-        if (userBook == null) {
-          return const SizedBox.shrink();
-        }
-
-        final activeLoan = lendingProvider.getActiveLoanForBook(_book!.isbn);
-        final isLent = activeLoan != null;
-
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isLent ? Icons.person : Icons.share,
-                      size: 20,
-                      color: isLent ? AppTheme.primaryColor : Colors.grey.shade600,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Lending',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (isLent) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppTheme.primaryColor,
-                          child: Text(
-                            activeLoan.borrowerName[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        activeLoan != null ? Icons.person : Icons.share_outlined,
+                        color: activeLoan != null ? AppTheme.secondaryColor : AppTheme.textMuted,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Lending',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
+                      ),
+                      const Spacer(),
+                      if (activeLoan != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Lent Out',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.secondaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (activeLoan != null) ...[
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: AppTheme.secondaryColor,
+                          child: Text(
+                            activeLoan.borrowerName[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -447,15 +667,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Lent to ${activeLoan.borrowerName}',
-                                style: const TextStyle(fontWeight: FontWeight.w500),
+                                activeLoan.borrowerName,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                               Text(
                                 _formatLentDate(activeLoan.lentAt),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
+                                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                               ),
                             ],
                           ),
@@ -466,113 +683,136 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ] else ...[
-                  OutlinedButton.icon(
-                    onPressed: () => _showLendDialog(context),
-                    icon: const Icon(Icons.share, size: 18),
-                    label: const Text('Lend to someone'),
-                  ),
+                  ] else ...[
+                    OutlinedButton.icon(
+                      onPressed: () => _showLendDialog(context),
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Lend to someone'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
-  Future<void> _showLendDialog(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await LendBookDialog.show(
-      context,
-      _book!.isbn,
-      bookTitle: _book!.title,
-    );
-    if (result == true && mounted) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Book marked as lent')),
-      );
-    }
-  }
-
-  Future<void> _markReturned(BuildContext context, String loanId) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final lendingProvider = context.read<LendingProvider>();
-    try {
-      await lendingProvider.returnBook(loanId);
-      if (mounted) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Book marked as returned')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Failed to mark as returned: $e')),
-        );
-      }
-    }
-  }
-
-  String _formatLentDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Lent today';
-    } else if (difference.inDays == 1) {
-      return 'Lent yesterday';
-    } else if (difference.inDays < 7) {
-      return 'Lent ${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      final weeks = (difference.inDays / 7).floor();
-      return 'Lent $weeks week${weeks > 1 ? 's' : ''} ago';
-    } else {
-      final months = (difference.inDays / 30).floor();
-      return 'Lent $months month${months > 1 ? 's' : ''} ago';
-    }
-  }
-
   Widget _buildDescription(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Description',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+    final description = _book!.description!;
+    final isLong = description.length > 300;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.description_outlined, color: AppTheme.primaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'About this book',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _book!.description!,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            ],
+          ),
+          const SizedBox(height: 12),
+          AnimatedCrossFade(
+            firstChild: Text(
+              description,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
                 height: 1.6,
+                color: AppTheme.textSecondary,
               ),
-        ),
-      ],
+            ),
+            secondChild: Text(
+              description,
+              style: TextStyle(
+                height: 1.6,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            crossFadeState: _descriptionExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+          if (isLong) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => setState(() => _descriptionExpanded = !_descriptionExpanded),
+              child: Text(
+                _descriptionExpanded ? 'Show less' : 'Read more',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildSubjects(BuildContext context) {
+  Widget _buildGenres(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Genres',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+        Row(
+          children: [
+            Icon(Icons.category_outlined, color: AppTheme.primaryColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Genres',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _book!.subjects!.map((subject) {
-            return Chip(
-              label: Text(subject),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          children: _book!.subjects!.take(8).map((subject) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.tertiaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.tertiaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                subject,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.tertiaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             );
           }).toList(),
         ),
@@ -580,61 +820,49 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  Widget _buildDetails(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Details',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            if (_book!.pageCount != null)
-              _buildDetailRow('Pages', _book!.pageCount.toString()),
-            if (_book!.publishedDate != null)
-              _buildDetailRow('First Published', _book!.publishedDate!),
-            _buildDetailRow('ISBN', _book!.isbn),
-          ],
-        ),
-      ),
-    );
+  IconData _getShelfIcon(ReadingStatus status) {
+    switch (status) {
+      case ReadingStatus.wantToRead:
+        return Icons.bookmark_outline;
+      case ReadingStatus.currentlyReading:
+        return Icons.menu_book;
+      case ReadingStatus.read:
+        return Icons.check_circle_outline;
+      case ReadingStatus.none:
+        return Icons.add_rounded;
+    }
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _showLendDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await LendBookDialog.show(context, _book!.isbn, bookTitle: _book!.title);
+    if (result == true && mounted) {
+      messenger.showSnackBar(const SnackBar(content: Text('Book marked as lent')));
+    }
+  }
+
+  Future<void> _markReturned(BuildContext context, String loanId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<LendingProvider>().returnBook(loanId);
+      if (mounted) messenger.showSnackBar(const SnackBar(content: Text('Book marked as returned')));
+    } catch (e) {
+      if (mounted) messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  String _formatLentDate(DateTime date) {
+    final days = DateTime.now().difference(date).inDays;
+    if (days == 0) return 'Lent today';
+    if (days == 1) return 'Lent yesterday';
+    if (days < 7) return 'Lent $days days ago';
+    if (days < 30) return 'Lent ${(days / 7).floor()} week${days >= 14 ? 's' : ''} ago';
+    return 'Lent ${(days / 30).floor()} month${days >= 60 ? 's' : ''} ago';
   }
 
   String _formatCount(int count) {
-    if (count >= 1000000) {
-      return '${(count / 1000000).toStringAsFixed(1)}M';
-    } else if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}K';
-    }
+    if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
   }
 }

@@ -10,6 +10,7 @@ import 'amplifyconfiguration.dart';
 
 import 'providers/auth_provider.dart' as app_auth;
 import 'providers/books_provider.dart';
+import 'providers/browse_provider.dart';
 import 'providers/shelves_provider.dart';
 import 'providers/lending_provider.dart';
 import 'router.dart';
@@ -106,6 +107,7 @@ class _BetterReadsAppState extends State<BetterReadsApp> {
       providers: [
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider.value(value: _booksProvider),
+        ChangeNotifierProvider(create: (_) => BrowseProvider()),
         ChangeNotifierProvider(create: (_) => ShelvesProvider()),
         ChangeNotifierProvider(create: (_) => LendingProvider()),
       ],

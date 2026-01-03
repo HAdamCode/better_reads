@@ -14,10 +14,12 @@ class BooksProvider extends ChangeNotifier {
 
   List<Book> _searchResults = [];
   List<Book> _trendingBooks = [];
+  List<Book> _forYouBooks = [];
   Map<String, UserBook> _userBooks = {}; // bookId -> UserBook
   Map<String, Book> _bookCache = {}; // bookId -> Book (for storing book metadata)
   bool _isSearching = false;
   bool _isLoadingTrending = false;
+  bool _isLoadingForYou = false;
   bool _isLoadingUserBooks = false;
   String? _searchError;
   String? _trendingError;
@@ -80,6 +82,13 @@ class BooksProvider extends ChangeNotifier {
             ?.map((e) => e as String)
             .toList() ?? [];
 
+        final updatedAt = bookData['updatedAt'] != null
+            ? DateTime.parse(bookData['updatedAt'] as String)
+            : DateTime.now();
+        final addedAt = bookData['addedAt'] != null
+            ? DateTime.parse(bookData['addedAt'] as String)
+            : updatedAt;
+
         _userBooks[bookId] = UserBook(
           userId: bookData['userId'] as String? ?? '',
           bookId: bookId,
@@ -93,8 +102,8 @@ class BooksProvider extends ChangeNotifier {
               ? DateTime.parse(bookData['finishedAt'] as String)
               : null,
           pagesRead: bookData['pagesRead'] as int?,
-          addedAt: DateTime.parse(bookData['addedAt'] as String),
-          updatedAt: DateTime.parse(bookData['updatedAt'] as String),
+          addedAt: addedAt,
+          updatedAt: updatedAt,
           book: cachedBook,
         );
 
@@ -165,9 +174,11 @@ class BooksProvider extends ChangeNotifier {
 
   List<Book> get searchResults => _searchResults;
   List<Book> get trendingBooks => _trendingBooks;
+  List<Book> get forYouBooks => _forYouBooks;
   Map<String, UserBook> get userBooks => _userBooks;
   bool get isSearching => _isSearching;
   bool get isLoadingTrending => _isLoadingTrending;
+  bool get isLoadingForYou => _isLoadingForYou;
   String? get searchError => _searchError;
   String? get trendingError => _trendingError;
 
@@ -273,8 +284,8 @@ class BooksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadTrendingBooks() async {
-    if (_trendingBooks.isNotEmpty) return;
+  Future<void> loadTrendingBooks({bool forceRefresh = false}) async {
+    if (_trendingBooks.isNotEmpty && !forceRefresh) return;
 
     _isLoadingTrending = true;
     _trendingError = null;
@@ -290,6 +301,134 @@ class BooksProvider extends ChangeNotifier {
 
     _isLoadingTrending = false;
     notifyListeners();
+  }
+
+  /// Load personalized book recommendations based on user's read books
+  /// Clear For You cache to force refresh
+  void clearForYouCache() {
+    _forYouBooks = [];
+    notifyListeners();
+  }
+
+  Future<void> loadForYouBooks({bool forceRefresh = false}) async {
+    if (_forYouBooks.isNotEmpty && !forceRefresh) return;
+
+    _isLoadingForYou = true;
+    notifyListeners();
+
+    try {
+      // Collect subjects from user's read books
+      final subjectCounts = <String, int>{};
+      for (final userBook in readBooks) {
+        final book = userBook.book;
+        debugPrint('ForYou: Analyzing book "${book?.title}" with subjects: ${book?.subjects}');
+        if (book?.subjects != null) {
+          for (final subject in book!.subjects!) {
+            // Normalize subject names for better matching
+            final normalized = _normalizeSubject(subject);
+            debugPrint('ForYou: Subject "$subject" -> normalized: "$normalized"');
+            if (normalized.isNotEmpty) {
+              subjectCounts[normalized] = (subjectCounts[normalized] ?? 0) + 1;
+            }
+          }
+        }
+      }
+
+      debugPrint('ForYou: Subject counts: $subjectCounts');
+
+      List<String> topSubjects;
+      if (subjectCounts.isEmpty) {
+        // Fallback genres if user has no read books with subjects
+        debugPrint('ForYou: No subjects found, using fallback genres');
+        topSubjects = ['business', 'technology', 'self_help', 'biography'];
+      } else {
+        // Get top 3 most common subjects
+        final sortedSubjects = subjectCounts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        topSubjects = sortedSubjects.take(3).map((e) => e.key).toList();
+      }
+
+      debugPrint('ForYou: Using subjects: $topSubjects');
+
+      // Fetch books for each subject in parallel
+      final futures = topSubjects.map((subject) =>
+          _bookService.getBooksBySubject(subject, limit: 8));
+      final results = await Future.wait(futures);
+
+      // Merge results and remove duplicates
+      final seen = <String>{};
+      final allBooks = <Book>[];
+
+      // Also exclude books already on user's shelves
+      final userBookIds = _userBooks.keys.toSet();
+
+      for (final books in results) {
+        for (final book in books) {
+          if (!seen.contains(book.isbn) && !userBookIds.contains(book.isbn)) {
+            seen.add(book.isbn);
+            allBooks.add(book);
+          }
+        }
+      }
+
+      // Sort by rating (books with ratings first)
+      allBooks.sort((a, b) {
+        if (a.averageRating != null && b.averageRating == null) return -1;
+        if (a.averageRating == null && b.averageRating != null) return 1;
+        if (a.averageRating != null && b.averageRating != null) {
+          return b.averageRating!.compareTo(a.averageRating!);
+        }
+        return 0;
+      });
+
+      _forYouBooks = allBooks.take(12).toList();
+    } catch (e) {
+      debugPrint('Failed to load For You books: $e');
+      _forYouBooks = [];
+    }
+
+    _isLoadingForYou = false;
+    notifyListeners();
+  }
+
+  /// Normalize subject names for better matching with Google Books categories
+  String _normalizeSubject(String subject) {
+    final lower = subject.toLowerCase().trim();
+
+    // Business & Professional
+    if (lower.contains('business') || lower.contains('management') ||
+        lower.contains('leadership') || lower.contains('entrepreneur')) return 'business';
+    if (lower.contains('artificial intelligence') || lower.contains(' ai ') ||
+        lower.contains('machine learning')) return 'artificial+intelligence';
+    if (lower.contains('technology') || lower.contains('computers') ||
+        lower.contains('programming') || lower.contains('software')) return 'technology';
+    if (lower.contains('economics') || lower.contains('finance') ||
+        lower.contains('investing')) return 'finance';
+
+    // Non-fiction
+    if (lower.contains('self-help') || lower.contains('self help') ||
+        lower.contains('personal development')) return 'self_help';
+    if (lower.contains('biography') || lower.contains('memoir') ||
+        lower.contains('autobiography')) return 'biography';
+    if (lower.contains('history')) return 'history';
+    if (lower.contains('science') && !lower.contains('fiction')) return 'science';
+    if (lower.contains('psychology') || lower.contains('mental')) return 'psychology';
+    if (lower.contains('philosophy')) return 'philosophy';
+    if (lower.contains('health') || lower.contains('wellness') ||
+        lower.contains('fitness')) return 'health';
+
+    // Fiction genres
+    if (lower.contains('fiction') && !lower.contains('non')) return 'fiction';
+    if (lower.contains('mystery') || lower.contains('detective')) return 'mystery';
+    if (lower.contains('thriller') || lower.contains('suspense')) return 'thriller';
+    if (lower.contains('fantasy')) return 'fantasy';
+    if (lower.contains('science fiction') || lower.contains('sci-fi')) return 'science_fiction';
+    if (lower.contains('romance')) return 'romance';
+    if (lower.contains('horror')) return 'horror';
+    if (lower.contains('literary')) return 'literary_fiction';
+
+    // Return empty for subjects that don't map well
+    return '';
   }
 
   Future<Book?> getBookByIsbn(String isbn) async {
@@ -336,6 +475,11 @@ class BooksProvider extends ChangeNotifier {
     _userBooks[book.isbn] = userBook;
     notifyListeners();
 
+    // Clear For You cache when adding to read shelf
+    if (readingStatus == ReadingStatus.read) {
+      _forYouBooks = [];
+    }
+
     // Sync with backend
     try {
       await _graphQLService.addBookToShelf(
@@ -368,6 +512,11 @@ class BooksProvider extends ChangeNotifier {
     // Update local state immediately
     _userBooks[bookId] = updated;
     notifyListeners();
+
+    // Clear For You cache when reading status changes to refresh recommendations
+    if (newStatus == ReadingStatus.read) {
+      _forYouBooks = [];
+    }
 
     // Sync with backend
     try {

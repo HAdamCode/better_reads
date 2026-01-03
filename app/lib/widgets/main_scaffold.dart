@@ -41,14 +41,14 @@ class MainScaffold extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(
-                  icon: Icons.home_rounded,
-                  label: 'Home',
+                  icon: Icons.explore_rounded,
+                  label: 'Discover',
                   isSelected: currentIndex == 0,
                   onTap: () => _onItemTapped(context, 0),
                 ),
                 _NavItem(
                   icon: Icons.search_rounded,
-                  label: 'Discover',
+                  label: 'Search',
                   isSelected: currentIndex == 1,
                   onTap: () => _onItemTapped(context, 1),
                 ),
