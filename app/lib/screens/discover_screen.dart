@@ -124,7 +124,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     ),
                     child: const Icon(Icons.search, size: 22),
                   ),
-                  onPressed: () => context.go('/search'),
+                  onPressed: () => context.push('/search'),
                 ),
                 const SizedBox(width: 8),
               ],

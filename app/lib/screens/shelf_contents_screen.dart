@@ -141,7 +141,7 @@ class ShelfContentsScreen extends StatelessWidget {
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => context.go('/search'),
+            onPressed: () => context.push('/search'),
             icon: const Icon(Icons.add),
             label: const Text('Find Books'),
           ),
@@ -170,7 +170,7 @@ class ShelfContentsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 24),
                         FilledButton.icon(
-                          onPressed: () => context.go('/search'),
+                          onPressed: () => context.push('/search'),
                           icon: const Icon(Icons.search),
                           label: const Text('Find Books'),
                         ),
