@@ -422,6 +422,9 @@ export class InfraStack extends cdk.Stack {
             #if($ctx.args.input.finishedAt)
             "finishedAt": $util.dynamodb.toDynamoDBJson($ctx.args.input.finishedAt),
             #end
+            #if($ctx.args.input.pagesRead)
+            "pagesRead": $util.dynamodb.toDynamoDBJson($ctx.args.input.pagesRead),
+            #end
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
           }
         }

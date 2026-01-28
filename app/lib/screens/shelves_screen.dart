@@ -56,6 +56,7 @@ class ShelvesScreen extends StatelessWidget {
                     showEmptyState: true,
                     onAddTap: () => context.push('/search'),
                     theme: theme,
+                    showProgressBadges: true,
                   ),
                 ),
 

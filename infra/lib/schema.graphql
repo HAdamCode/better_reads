@@ -129,6 +129,7 @@ input AddBookToShelfInput {
   rating: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
+  pagesRead: Int
 }
 
 input UpdateBookShelfInput {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/user_book.dart';
 import 'book_card.dart';
+import 'update_progress_dialog.dart';
 
 class BookCarousel extends StatefulWidget {
   final List<UserBook> books;
@@ -9,6 +10,7 @@ class BookCarousel extends StatefulWidget {
   final double itemWidth;
   final double itemHeight;
   final Widget? trailingWidget;
+  final bool showProgressBadges;
 
   const BookCarousel({
     super.key,
@@ -17,6 +19,7 @@ class BookCarousel extends StatefulWidget {
     this.itemWidth = 120,
     this.itemHeight = 200,
     this.trailingWidget,
+    this.showProgressBadges = false,
   });
 
   @override
@@ -87,6 +90,16 @@ class _BookCarouselState extends State<BookCarousel> {
     );
   }
 
+  void _showProgressDialog(BuildContext context, UserBook userBook) {
+    UpdateProgressDialog.show(
+      context,
+      bookId: userBook.bookId,
+      bookTitle: userBook.book?.title ?? 'Unknown',
+      currentPage: userBook.pagesRead,
+      totalPages: userBook.book?.pageCount,
+    );
+  }
+
   Widget _buildBookItem(BuildContext context, int index) {
     final userBook = widget.books[index];
     if (userBook.book == null) return const SizedBox.shrink();
@@ -129,6 +142,12 @@ class _BookCarouselState extends State<BookCarousel> {
                 heroTag: heroTag,
                 width: widget.itemWidth,
                 height: widget.itemHeight,
+                showProgressBadge: widget.showProgressBadges,
+                pagesRead: userBook.pagesRead,
+                totalPages: userBook.book?.pageCount,
+                onProgressTap: widget.showProgressBadges
+                    ? () => _showProgressDialog(context, userBook)
+                    : null,
               ),
             ),
           ),

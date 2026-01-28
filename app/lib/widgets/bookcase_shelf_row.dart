@@ -19,6 +19,7 @@ class BookcaseShelfRow extends StatelessWidget {
   final bool showEmptyState;
   final Widget? emptyStateWidget;
   final ShelfTheme? theme;
+  final bool showProgressBadges;
 
   const BookcaseShelfRow({
     super.key,
@@ -33,6 +34,7 @@ class BookcaseShelfRow extends StatelessWidget {
     this.showEmptyState = true,
     this.emptyStateWidget,
     this.theme,
+    this.showProgressBadges = false,
   });
 
   @override
@@ -154,6 +156,7 @@ class BookcaseShelfRow extends StatelessWidget {
                             child: BookCarousel(
                               books: books,
                               heroTagPrefix: heroTagPrefix,
+                              showProgressBadges: showProgressBadges,
                               trailingWidget: onAddTap != null
                                   ? _buildAddButton(context, currentTheme)
                                   : null,

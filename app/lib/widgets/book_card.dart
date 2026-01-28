@@ -9,6 +9,10 @@ class BookCard extends StatelessWidget {
   final double width;
   final double height;
   final String? heroTag;
+  final int? pagesRead;
+  final int? totalPages;
+  final bool showProgressBadge;
+  final VoidCallback? onProgressTap;
 
   const BookCard({
     super.key,
@@ -17,7 +21,18 @@ class BookCard extends StatelessWidget {
     this.width = 120,
     this.height = 200,
     this.heroTag,
+    this.pagesRead,
+    this.totalPages,
+    this.showProgressBadge = false,
+    this.onProgressTap,
   });
+
+  double? get _progress {
+    if (pagesRead == null || totalPages == null || totalPages == 0) return null;
+    return (pagesRead! / totalPages!).clamp(0.0, 1.0);
+  }
+
+  int? get _percentage => _progress != null ? (_progress! * 100).round() : null;
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +76,8 @@ class BookCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Rating badge
-                  if (book.averageRating != null)
+                  // Rating badge (only show if not showing progress badge)
+                  if (book.averageRating != null && !showProgressBadge)
                     Positioned(
                       top: 6,
                       right: 6,
@@ -91,6 +106,16 @@ class BookCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                  // Bookmark progress badge for currently reading books
+                  if (showProgressBadge)
+                    Positioned(
+                      top: -4,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: onProgressTap,
+                        child: _buildBookmarkBadge(),
                       ),
                     ),
                 ],
@@ -197,4 +222,84 @@ class BookCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildBookmarkBadge() {
+    final displayText = _percentage != null ? '$_percentage%' : '...';
+
+    return CustomPaint(
+      painter: _BookmarkPainter(color: AppTheme.currentlyReadingColor),
+      child: Container(
+        width: 32,
+        height: 44,
+        padding: const EdgeInsets.only(top: 6),
+        child: Column(
+          children: [
+            Text(
+              displayText,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1,
+              ),
+            ),
+            if (_progress != null) ...[
+              const SizedBox(height: 3),
+              SizedBox(
+                width: 20,
+                height: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: _progress!,
+                    backgroundColor: Colors.white.withValues(alpha: 0.3),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkPainter extends CustomPainter {
+  final Color color;
+
+  _BookmarkPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+
+    final path = Path();
+    // Draw bookmark shape
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width, size.height - 8);
+    path.lineTo(size.width / 2, size.height);
+    path.lineTo(0, size.height - 8);
+    path.close();
+
+    // Draw shadow first
+    canvas.save();
+    canvas.translate(1, 1);
+    canvas.drawPath(path, shadowPaint);
+    canvas.restore();
+
+    // Draw bookmark
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

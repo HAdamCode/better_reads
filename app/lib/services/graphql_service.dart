@@ -56,6 +56,7 @@ class GraphQLService {
     int? rating,
     DateTime? startedAt,
     DateTime? finishedAt,
+    int? pagesRead,
   }) async {
     const mutation = '''
       mutation AddBookToShelf(\$input: AddBookToShelfInput!) {
@@ -83,6 +84,7 @@ class GraphQLService {
           if (rating != null) 'rating': rating,
           if (startedAt != null) 'startedAt': startedAt.toUtc().toIso8601String(),
           if (finishedAt != null) 'finishedAt': finishedAt.toUtc().toIso8601String(),
+          if (pagesRead != null) 'pagesRead': pagesRead,
         },
       };
 

@@ -496,6 +496,112 @@ class BooksProvider extends ChangeNotifier {
     }
   }
 
+  /// Import or update a book with full data from CSV import
+  /// Returns: 'added', 'updated', or 'failed'
+  /// This is optimized for bulk imports - call notifyBatchComplete() after batch
+  Future<String> importOrUpdateBook({
+    required Book book,
+    required ReadingStatus status,
+    List<String> customShelfIds = const [],
+    int? rating,
+    DateTime? dateRead,
+    DateTime? dateAdded,
+    bool notify = true,
+  }) async {
+    final now = DateTime.now();
+    final existing = _userBooks[book.isbn];
+    final isUpdate = existing != null;
+
+    // Cache the book metadata
+    _bookCache[book.isbn] = book;
+
+    // Determine dates - preserve existing if not provided in import
+    DateTime? startedAt;
+    DateTime? finishedAt;
+    DateTime addedAtFinal;
+
+    if (isUpdate) {
+      // For updates, only override dates if CSV has them
+      startedAt = status == ReadingStatus.currentlyReading
+          ? (dateAdded ?? existing.startedAt ?? now)
+          : existing.startedAt;
+      finishedAt = status == ReadingStatus.read
+          ? (dateRead ?? existing.finishedAt ?? now)
+          : existing.finishedAt;
+      addedAtFinal = existing.addedAt; // Preserve original added date
+    } else {
+      // For new books
+      startedAt = status == ReadingStatus.currentlyReading ? (dateAdded ?? now) : null;
+      finishedAt = status == ReadingStatus.read ? (dateRead ?? now) : null;
+      addedAtFinal = dateAdded ?? now;
+    }
+
+    final userBook = UserBook(
+      userId: existing?.userId ?? '',
+      bookId: book.isbn,
+      readingStatus: status,
+      customShelfIds: customShelfIds,
+      rating: rating ?? existing?.rating, // Preserve existing rating if not in CSV
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+      pagesRead: existing?.pagesRead, // Preserve reading progress
+      addedAt: addedAtFinal,
+      updatedAt: now,
+      book: book,
+    );
+
+    // Update local state
+    _userBooks[book.isbn] = userBook;
+
+    if (notify) {
+      notifyListeners();
+    }
+
+    // Clear For You cache when adding to read shelf
+    if (status == ReadingStatus.read) {
+      _forYouBooks = [];
+    }
+
+    // Sync with backend
+    try {
+      if (isUpdate) {
+        await _graphQLService.updateBookShelf(
+          bookId: book.isbn,
+          shelf: status.apiValue,
+          customShelfIds: customShelfIds.isEmpty ? null : customShelfIds,
+          rating: userBook.rating,
+          startedAt: userBook.startedAt,
+          finishedAt: userBook.finishedAt,
+          pagesRead: userBook.pagesRead,
+        );
+        return 'updated';
+      } else {
+        await _graphQLService.addBookToShelf(
+          bookId: book.isbn,
+          shelf: status.apiValue,
+          customShelfIds: customShelfIds.isEmpty ? null : customShelfIds,
+          rating: userBook.rating,
+          startedAt: userBook.startedAt,
+          finishedAt: userBook.finishedAt,
+        );
+        return 'added';
+      }
+    } catch (e) {
+      debugPrint('Failed to sync importOrUpdateBook: $e');
+      return 'failed';
+    }
+  }
+
+  /// Call after importing a batch of books to update UI and save cache
+  Future<void> notifyBatchComplete() async {
+    notifyListeners();
+    await _saveToLocalCache();
+    await _saveBookCache();
+  }
+
+  /// Check if a book is already in the user's library
+  bool isBookInLibrary(String bookId) => _userBooks.containsKey(bookId);
+
   Future<void> updateBookShelf(String bookId, ReadingStatus newStatus) async {
     final existing = _userBooks[bookId];
     if (existing == null) return;
@@ -661,6 +767,38 @@ class BooksProvider extends ChangeNotifier {
       await _saveToLocalCache();
     } catch (e) {
       debugPrint('Failed to sync updateBookRating: $e');
+      await _saveToLocalCache();
+    }
+  }
+
+  /// Update reading progress (current page) for a book
+  Future<void> updateReadingProgress(String bookId, int pagesRead) async {
+    final existing = _userBooks[bookId];
+    if (existing == null) return;
+
+    final updated = existing.copyWith(
+      pagesRead: pagesRead,
+      updatedAt: DateTime.now(),
+    );
+
+    // Update local state immediately
+    _userBooks[bookId] = updated;
+    notifyListeners();
+
+    // Sync with backend
+    try {
+      await _graphQLService.updateBookShelf(
+        bookId: bookId,
+        shelf: updated.readingStatus.apiValue,
+        customShelfIds: updated.customShelfIds,
+        rating: updated.rating,
+        startedAt: updated.startedAt,
+        finishedAt: updated.finishedAt,
+        pagesRead: pagesRead,
+      );
+      await _saveToLocalCache();
+    } catch (e) {
+      debugPrint('Failed to sync updateReadingProgress: $e');
       await _saveToLocalCache();
     }
   }

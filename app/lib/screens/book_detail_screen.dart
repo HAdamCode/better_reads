@@ -10,6 +10,7 @@ import '../services/book_service.dart';
 import '../utils/theme.dart';
 import '../widgets/shelf_picker_sheet.dart';
 import '../widgets/lend_book_dialog.dart';
+import '../widgets/update_progress_dialog.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final String isbn;
@@ -550,6 +551,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               ),
             ),
 
+            // Reading Progress (only for currently reading books)
+            if (userBook.readingStatus == ReadingStatus.currentlyReading) ...[
+              const SizedBox(height: 12),
+              _buildReadingProgressCard(context, userBook, booksProvider),
+            ],
+
             // Custom Shelves
             if (userBook.customShelfIds.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -817,6 +824,96 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildReadingProgressCard(BuildContext context, UserBook userBook, BooksProvider provider) {
+    final pagesRead = userBook.pagesRead ?? 0;
+    final totalPages = _book?.pageCount;
+    final progress = (totalPages != null && totalPages > 0)
+        ? (pagesRead / totalPages).clamp(0.0, 1.0)
+        : 0.0;
+    final percentage = (progress * 100).round();
+
+    return GestureDetector(
+      onTap: () => UpdateProgressDialog.show(
+        context,
+        bookId: _book!.isbn,
+        bookTitle: _book!.title,
+        currentPage: pagesRead,
+        totalPages: totalPages,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.bookmark, color: AppTheme.currentlyReadingColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Reading Progress',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const Spacer(),
+                Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.currentlyReadingColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12,
+                backgroundColor: AppTheme.currentlyReadingColor.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation(AppTheme.currentlyReadingColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  totalPages != null
+                      ? 'Page $pagesRead of $totalPages'
+                      : 'Page $pagesRead',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.edit, size: 14, color: AppTheme.textMuted),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Tap to update',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
