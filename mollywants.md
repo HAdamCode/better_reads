@@ -1,5 +1,3 @@
-when adding a book to currently reading, should show quick adds of want to reads
-
 full width click on custom shelves
 
 show shelved ratings and save them inline with the empty star

@@ -12,6 +12,7 @@ import '../widgets/book_card.dart';
 import '../widgets/bookcase_shelf_row.dart';
 import '../widgets/create_shelf_dialog.dart';
 import '../widgets/shelf_painters.dart';
+import '../widgets/start_reading_sheet.dart';
 import '../widgets/theme_selector_sheet.dart';
 import '../widgets/wooden_shelf_divider.dart';
 
@@ -54,7 +55,7 @@ class ShelvesScreen extends StatelessWidget {
                     books: booksProvider.currentlyReadingBooks,
                     heroTagPrefix: 'book-shelf-reading',
                     showEmptyState: true,
-                    onAddTap: () => context.push('/search'),
+                    onAddTap: () => StartReadingSheet.show(context),
                     theme: theme,
                     showProgressBadges: true,
                   ),
