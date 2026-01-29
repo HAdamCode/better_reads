@@ -32,6 +32,8 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildReadingGoal(context),
             const SizedBox(height: 24),
+            _buildImportSection(context),
+            const SizedBox(height: 24),
             _buildSignOutButton(context),
           ],
         ),
@@ -228,6 +230,28 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImportSection(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.upload_file_outlined,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        title: const Text('Import from Goodreads'),
+        subtitle: const Text('Import your existing library via CSV'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/import'),
       ),
     );
   }

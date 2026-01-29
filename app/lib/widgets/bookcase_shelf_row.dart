@@ -20,6 +20,7 @@ class BookcaseShelfRow extends StatelessWidget {
   final Widget? emptyStateWidget;
   final ShelfTheme? theme;
   final bool showProgressBadges;
+  final Color? progressBadgeColor;
 
   const BookcaseShelfRow({
     super.key,
@@ -35,6 +36,7 @@ class BookcaseShelfRow extends StatelessWidget {
     this.emptyStateWidget,
     this.theme,
     this.showProgressBadges = false,
+    this.progressBadgeColor,
   });
 
   @override
@@ -157,6 +159,7 @@ class BookcaseShelfRow extends StatelessWidget {
                               books: books,
                               heroTagPrefix: heroTagPrefix,
                               showProgressBadges: showProgressBadges,
+                              progressBadgeColor: progressBadgeColor ?? iconColor,
                               trailingWidget: onAddTap != null
                                   ? _buildAddButton(context, currentTheme)
                                   : null,

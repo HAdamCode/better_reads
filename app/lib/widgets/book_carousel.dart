@@ -11,6 +11,7 @@ class BookCarousel extends StatefulWidget {
   final double itemHeight;
   final Widget? trailingWidget;
   final bool showProgressBadges;
+  final Color? progressBadgeColor;
 
   const BookCarousel({
     super.key,
@@ -20,6 +21,7 @@ class BookCarousel extends StatefulWidget {
     this.itemHeight = 200,
     this.trailingWidget,
     this.showProgressBadges = false,
+    this.progressBadgeColor,
   });
 
   @override
@@ -148,6 +150,9 @@ class _BookCarouselState extends State<BookCarousel> {
                 onProgressTap: widget.showProgressBadges
                     ? () => _showProgressDialog(context, userBook)
                     : null,
+                progressBadgeColor: widget.progressBadgeColor,
+                userRating: userBook.rating,
+                isInLibrary: true,
               ),
             ),
           ),

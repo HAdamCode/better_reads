@@ -13,6 +13,9 @@ class BookCard extends StatelessWidget {
   final int? totalPages;
   final bool showProgressBadge;
   final VoidCallback? onProgressTap;
+  final Color? progressBadgeColor;
+  final int? userRating;
+  final bool isInLibrary;
 
   const BookCard({
     super.key,
@@ -25,6 +28,9 @@ class BookCard extends StatelessWidget {
     this.totalPages,
     this.showProgressBadge = false,
     this.onProgressTap,
+    this.progressBadgeColor,
+    this.userRating,
+    this.isInLibrary = false,
   });
 
   double? get _progress {
@@ -77,7 +83,11 @@ class BookCard extends StatelessWidget {
                     ),
                   ),
                   // Rating badge (only show if not showing progress badge)
-                  if (book.averageRating != null && !showProgressBadge)
+                  // In library: only show user's rating (hide if not rated)
+                  // Not in library: show average rating
+                  if (!showProgressBadge &&
+                      ((isInLibrary && userRating != null) ||
+                          (!isInLibrary && book.averageRating != null)))
                     Positioned(
                       top: 6,
                       right: 6,
@@ -97,7 +107,9 @@ class BookCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              book.averageRating!.toStringAsFixed(1),
+                              isInLibrary
+                                  ? userRating.toString()
+                                  : book.averageRating!.toStringAsFixed(1),
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -225,9 +237,10 @@ class BookCard extends StatelessWidget {
 
   Widget _buildBookmarkBadge() {
     final displayText = _percentage != null ? '$_percentage%' : '...';
+    final badgeColor = progressBadgeColor ?? AppTheme.currentlyReadingColor;
 
     return CustomPaint(
-      painter: _BookmarkPainter(color: AppTheme.currentlyReadingColor),
+      painter: _BookmarkPainter(color: badgeColor),
       child: Container(
         width: 32,
         height: 44,

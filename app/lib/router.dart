@@ -13,6 +13,7 @@ import 'screens/auth/verify_email_screen.dart';
 import 'screens/isbn_scanner_screen.dart';
 import 'screens/shelf_contents_screen.dart';
 import 'screens/edit_profile_screen.dart';
+import 'screens/import_screen.dart';
 
 GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
   return GoRouter(
@@ -140,6 +141,15 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
         pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const EditProfileScreen(),
+        ),
+      ),
+
+      // Import from Goodreads
+      GoRoute(
+        path: '/import',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const ImportScreen(),
         ),
       ),
     ],

@@ -708,6 +708,57 @@ export class InfraStack extends cdk.Stack {
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
     });
 
+    customShelvesDataSource.createResolver('UpdateShelfBookRatingResolver', {
+      typeName: 'Mutation',
+      fieldName: 'updateShelfBookRating',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #if($ctx.args.rating)
+          ## Set or update the rating for this book
+          ## First ensure bookRatings map exists, then set the nested key
+          {
+            "version": "2017-02-28",
+            "operation": "UpdateItem",
+            "key": {
+              "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+              "shelfId": $util.dynamodb.toDynamoDBJson($ctx.args.shelfId)
+            },
+            "update": {
+              "expression": "SET #bookRatings = if_not_exists(#bookRatings, :emptyMap), #bookRatings.#bookId = :rating, updatedAt = :updatedAt",
+              "expressionNames": {
+                "#bookRatings": "bookRatings",
+                "#bookId": "$ctx.args.bookId"
+              },
+              "expressionValues": {
+                ":emptyMap": { "M": {} },
+                ":rating": $util.dynamodb.toDynamoDBJson($ctx.args.rating),
+                ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+              }
+            }
+          }
+        #else
+          ## Remove the rating for this book
+          {
+            "version": "2017-02-28",
+            "operation": "UpdateItem",
+            "key": {
+              "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+              "shelfId": $util.dynamodb.toDynamoDBJson($ctx.args.shelfId)
+            },
+            "update": {
+              "expression": "REMOVE bookRatings.#bookId SET updatedAt = :updatedAt",
+              "expressionNames": {
+                "#bookId": "$ctx.args.bookId"
+              },
+              "expressionValues": {
+                ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+              }
+            }
+          }
+        #end
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
     // ========================================
     // BOOK LOANS RESOLVERS
     // ========================================

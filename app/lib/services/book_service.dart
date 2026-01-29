@@ -76,6 +76,22 @@ class BookService {
     }
   }
 
+  /// Search by title and author combination for better accuracy (used for import fallback)
+  Future<List<Book>> searchByTitleAuthor(String title, String author, {int limit = 5}) async {
+    if (title.isEmpty) return [];
+
+    try {
+      // Use intitle and inauthor operators for Google Books
+      final query = author.isNotEmpty
+          ? 'intitle:$title inauthor:$author'
+          : 'intitle:$title';
+      return _searchGoogle(query, limit: limit);
+    } catch (e) {
+      if (e is BookServiceException) rethrow;
+      throw BookServiceException('Network error: $e');
+    }
+  }
+
   /// Search for books by ISBN
   Future<Book?> getBookByIsbn(String isbn) async {
     final cleanIsbn = isbn.replaceAll(RegExp(r'[^0-9X]'), '');

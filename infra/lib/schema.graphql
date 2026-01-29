@@ -45,6 +45,7 @@ type CustomShelf {
   shelfId: ID!
   name: String!
   description: String
+  bookRatings: AWSJSON
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
 }
@@ -212,6 +213,7 @@ type Mutation {
   createCustomShelf(input: CreateCustomShelfInput!): CustomShelf
   updateCustomShelf(input: UpdateCustomShelfInput!): CustomShelf
   deleteCustomShelf(shelfId: ID!): CustomShelf
+  updateShelfBookRating(shelfId: ID!, bookId: String!, rating: Int): CustomShelf
 
   # Lending mutations
   lendBook(input: LendBookInput!): BookLoan

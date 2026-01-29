@@ -212,6 +212,7 @@ class GraphQLService {
           shelfId
           name
           description
+          bookRatings
           createdAt
           updatedAt
         }
@@ -252,6 +253,7 @@ class GraphQLService {
           shelfId
           name
           description
+          bookRatings
           createdAt
           updatedAt
         }
@@ -300,6 +302,7 @@ class GraphQLService {
           shelfId
           name
           description
+          bookRatings
           createdAt
           updatedAt
         }
@@ -361,6 +364,53 @@ class GraphQLService {
       return true;
     } catch (e) {
       debugPrint('Failed to delete custom shelf: $e');
+      rethrow;
+    }
+  }
+
+  /// Update the rating for a book on a specific shelf
+  /// Pass null for rating to remove the rating
+  Future<Map<String, dynamic>?> updateShelfBookRating({
+    required String shelfId,
+    required String bookId,
+    int? rating,
+  }) async {
+    const mutation = '''
+      mutation UpdateShelfBookRating(\$shelfId: ID!, \$bookId: String!, \$rating: Int) {
+        updateShelfBookRating(shelfId: \$shelfId, bookId: \$bookId, rating: \$rating) {
+          userId
+          shelfId
+          name
+          description
+          bookRatings
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {
+          'shelfId': shelfId,
+          'bookId': bookId,
+          if (rating != null) 'rating': rating,
+        },
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['updateShelfBookRating'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to update shelf book rating: $e');
       rethrow;
     }
   }

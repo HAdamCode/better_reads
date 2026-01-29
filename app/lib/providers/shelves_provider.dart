@@ -139,4 +139,96 @@ class ShelvesProvider extends ChangeNotifier {
       (s) => s.name.toLowerCase() == name.trim().toLowerCase(),
     );
   }
+
+  /// Get existing shelf by name or create it if it doesn't exist
+  /// Returns the shelf ID
+  Future<String?> getOrCreateShelf(String name) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return null;
+
+    // Check if shelf already exists
+    final existing = _customShelves.firstWhere(
+      (s) => s.name.toLowerCase() == trimmedName.toLowerCase(),
+      orElse: () => CustomShelf(
+        shelfId: '',
+        userId: '',
+        name: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    if (existing.shelfId.isNotEmpty) {
+      return existing.shelfId;
+    }
+
+    // Create new shelf
+    try {
+      final shelf = await createShelf(trimmedName);
+      return shelf?.shelfId;
+    } catch (e) {
+      debugPrint('Failed to create shelf "$trimmedName": $e');
+      return null;
+    }
+  }
+
+  /// Get shelf by name
+  CustomShelf? getShelfByName(String name) {
+    final trimmedName = name.trim().toLowerCase();
+    try {
+      return _customShelves.firstWhere(
+        (s) => s.name.toLowerCase() == trimmedName,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get the rating for a book on a specific shelf
+  int? getBookRatingOnShelf(String shelfId, String bookId) {
+    final shelf = getShelf(shelfId);
+    return shelf?.getBookRating(bookId);
+  }
+
+  /// Update the rating for a book on a specific shelf
+  /// Pass null for rating to remove the rating
+  Future<void> updateBookRatingOnShelf(String shelfId, String bookId, int? rating) async {
+    final index = _customShelves.indexWhere((s) => s.shelfId == shelfId);
+    if (index == -1) {
+      throw ArgumentError('Shelf not found');
+    }
+
+    // Optimistic update
+    final oldShelf = _customShelves[index];
+    final newRatings = Map<String, int>.from(oldShelf.bookRatings);
+    if (rating != null) {
+      newRatings[bookId] = rating;
+    } else {
+      newRatings.remove(bookId);
+    }
+    _customShelves[index] = oldShelf.copyWith(
+      bookRatings: newRatings,
+      updatedAt: DateTime.now(),
+    );
+    notifyListeners();
+
+    try {
+      final result = await _graphQLService.updateShelfBookRating(
+        shelfId: shelfId,
+        bookId: bookId,
+        rating: rating,
+      );
+
+      if (result != null) {
+        _customShelves[index] = CustomShelf.fromGraphQL(result);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Revert on error
+      _customShelves[index] = oldShelf;
+      notifyListeners();
+      debugPrint('Failed to update shelf book rating: $e');
+      rethrow;
+    }
+  }
 }

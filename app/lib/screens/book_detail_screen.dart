@@ -291,30 +291,34 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Widget _buildTitleSection(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          _book!.title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'by ${_book!.authorsString}',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.textMuted,
-                fontWeight: FontWeight.w500,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        if (_book!.averageRating != null) ...[
-          const SizedBox(height: 16),
-          _buildRatingDisplay(),
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            _book!.title,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'by ${_book!.authorsString}',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          if (_book!.averageRating != null) ...[
+            const SizedBox(height: 16),
+            _buildRatingDisplay(),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -492,6 +496,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Reading Progress (only for currently reading books)
+            if (userBook.readingStatus == ReadingStatus.currentlyReading) ...[
+              _buildReadingProgressCard(context, userBook, booksProvider),
+              const SizedBox(height: 12),
+            ],
+
             // Your Rating
             Container(
               padding: const EdgeInsets.all(16),
@@ -550,12 +560,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 ],
               ),
             ),
-
-            // Reading Progress (only for currently reading books)
-            if (userBook.readingStatus == ReadingStatus.currentlyReading) ...[
-              const SizedBox(height: 12),
-              _buildReadingProgressCard(context, userBook, booksProvider),
-            ],
 
             // Custom Shelves
             if (userBook.customShelfIds.isNotEmpty) ...[
