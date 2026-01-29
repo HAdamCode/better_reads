@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../utils/theme.dart';
 
@@ -85,6 +86,27 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save: $e')),
+        );
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _finishBook() async {
+    setState(() => _isSaving = true);
+    try {
+      final booksProvider = context.read<BooksProvider>();
+      // Update progress to total pages if known
+      if (widget.totalPages != null) {
+        await booksProvider.updateReadingProgress(widget.bookId, widget.totalPages!);
+      }
+      // Move to Read shelf
+      await booksProvider.updateBookShelf(widget.bookId, ReadingStatus.read);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to finish book: $e')),
         );
         setState(() => _isSaving = false);
       }
@@ -238,7 +260,24 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Finish Book button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isSaving ? null : _finishBook,
+                icon: const Icon(Icons.check_circle_outline, size: 20),
+                label: const Text('Finish Book'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.readColor,
+                  side: BorderSide(color: AppTheme.readColor),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
 
             // Action buttons
             Row(
