@@ -26,31 +26,81 @@ class BookService {
     }
 
     try {
-      // For short queries, search both by title AND general to get better results
-      final words = trimmedQuery.split(' ').where((w) => w.isNotEmpty).length;
-      final isShortQuery = words <= 3;
+      final queryLower = trimmedQuery.toLowerCase();
+      final seen = <String>{};
 
-      List<Book> allBooks = [];
+      // Collect books that actually match the query in title
+      final titleMatches = <Book>[];
+      // Collect other results
+      final otherResults = <Book>[];
 
-      // If short query, first search by title to find exact title matches
-      if (isShortQuery) {
-        final titleBooks = await _searchGoogle('intitle:$trimmedQuery', limit: limit ~/ 2);
-        allBooks.addAll(titleBooks);
+      // Search by title
+      final titleBooks = await _searchGoogle('intitle:$trimmedQuery', limit: limit);
+      for (final book in titleBooks) {
+        if (seen.add(book.isbn)) {
+          // Only count as title match if title actually contains the query
+          if (book.title.toLowerCase().contains(queryLower)) {
+            titleMatches.add(book);
+          } else {
+            otherResults.add(book);
+          }
+        }
       }
 
-      // Then do a general search
+      // General search for broader results
       final generalBooks = await _searchGoogle(trimmedQuery, limit: limit);
-      allBooks.addAll(generalBooks);
+      for (final book in generalBooks) {
+        if (seen.add(book.isbn)) {
+          if (book.title.toLowerCase().contains(queryLower)) {
+            titleMatches.add(book);
+          } else {
+            otherResults.add(book);
+          }
+        }
+      }
 
-      // Remove duplicates, keeping first occurrence (title matches first)
-      final seen = <String>{};
-      final uniqueBooks = allBooks.where((book) => seen.add(book.isbn)).toList();
+      // Sort title matches: exact > starts with > contains, then by popularity
+      titleMatches.sort((a, b) {
+        final titleA = a.title.toLowerCase();
+        final titleB = b.title.toLowerCase();
 
-      return uniqueBooks.take(limit).toList();
+        // Exact match gets highest priority
+        final aExact = titleA == queryLower;
+        final bExact = titleB == queryLower;
+        if (aExact && !bExact) return -1;
+        if (bExact && !aExact) return 1;
+        if (aExact && bExact) return _compareByPopularity(a, b);
+
+        // Starts with query gets next priority
+        final aStarts = titleA.startsWith(queryLower);
+        final bStarts = titleB.startsWith(queryLower);
+        if (aStarts && !bStarts) return -1;
+        if (bStarts && !aStarts) return 1;
+        if (aStarts && bStarts) return _compareByPopularity(a, b);
+
+        // Both contain query - sort by popularity
+        return _compareByPopularity(a, b);
+      });
+
+      // Sort other results by popularity
+      otherResults.sort(_compareByPopularity);
+
+      // Combine: title matches first, then other results
+      return [...titleMatches, ...otherResults].take(limit).toList();
     } catch (e) {
       if (e is BookServiceException) rethrow;
       throw BookServiceException('Network error: $e');
     }
+  }
+
+  /// Compare two books by popularity (most reads/ratings count first)
+  int _compareByPopularity(Book a, Book b) {
+    if (a.ratingsCount != null && b.ratingsCount == null) return -1;
+    if (a.ratingsCount == null && b.ratingsCount != null) return 1;
+    if (a.ratingsCount != null && b.ratingsCount != null) {
+      return b.ratingsCount!.compareTo(a.ratingsCount!);
+    }
+    return 0;
   }
 
   /// Internal Google Books search helper

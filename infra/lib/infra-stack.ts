@@ -655,6 +655,7 @@ export class InfraStack extends cdk.Stack {
             #if($ctx.args.input.description)
             "description": $util.dynamodb.toDynamoDBJson($ctx.args.input.description),
             #end
+            "bookRatings": { "M": {} },
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
           }
@@ -708,13 +709,40 @@ export class InfraStack extends cdk.Stack {
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
     });
 
-    customShelvesDataSource.createResolver('UpdateShelfBookRatingResolver', {
-      typeName: 'Mutation',
-      fieldName: 'updateShelfBookRating',
+    // Pipeline resolver for updateShelfBookRating - handles case where bookRatings doesn't exist
+    const initBookRatingsFunction = new appsync.AppsyncFunction(this, 'InitBookRatingsFunction', {
+      name: 'InitBookRatingsFunction',
+      api: this.api,
+      dataSource: customShelvesDataSource,
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        ## First, ensure bookRatings map exists on the shelf
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "shelfId": $util.dynamodb.toDynamoDBJson($ctx.args.shelfId)
+          },
+          "update": {
+            "expression": "SET bookRatings = if_not_exists(bookRatings, :emptyMap)",
+            "expressionValues": {
+              ":emptyMap": { "M": {} }
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        $util.toJson($ctx.result)
+      `),
+    });
+
+    const setBookRatingFunction = new appsync.AppsyncFunction(this, 'SetBookRatingFunction', {
+      name: 'SetBookRatingFunction',
+      api: this.api,
+      dataSource: customShelvesDataSource,
       requestMappingTemplate: appsync.MappingTemplate.fromString(`
         #if($ctx.args.rating)
           ## Set or update the rating for this book
-          ## First ensure bookRatings map exists, then set the nested key
           {
             "version": "2017-02-28",
             "operation": "UpdateItem",
@@ -723,13 +751,11 @@ export class InfraStack extends cdk.Stack {
               "shelfId": $util.dynamodb.toDynamoDBJson($ctx.args.shelfId)
             },
             "update": {
-              "expression": "SET #bookRatings = if_not_exists(#bookRatings, :emptyMap), #bookRatings.#bookId = :rating, updatedAt = :updatedAt",
+              "expression": "SET bookRatings.#bookId = :rating, updatedAt = :updatedAt",
               "expressionNames": {
-                "#bookRatings": "bookRatings",
                 "#bookId": "$ctx.args.bookId"
               },
               "expressionValues": {
-                ":emptyMap": { "M": {} },
                 ":rating": $util.dynamodb.toDynamoDBJson($ctx.args.rating),
                 ":updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
               }
@@ -756,7 +782,22 @@ export class InfraStack extends cdk.Stack {
           }
         #end
       `),
-      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        $util.toJson($ctx.result)
+      `),
+    });
+
+    new appsync.Resolver(this, 'UpdateShelfBookRatingPipelineResolver', {
+      api: this.api,
+      typeName: 'Mutation',
+      fieldName: 'updateShelfBookRating',
+      pipelineConfig: [initBookRatingsFunction, setBookRatingFunction],
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {}
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        $util.toJson($ctx.result)
+      `),
     });
 
     // ========================================

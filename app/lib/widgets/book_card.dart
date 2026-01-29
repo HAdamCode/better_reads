@@ -16,6 +16,7 @@ class BookCard extends StatelessWidget {
   final Color? progressBadgeColor;
   final int? userRating;
   final bool isInLibrary;
+  final void Function(int rating)? onRatingChanged;
 
   const BookCard({
     super.key,
@@ -31,6 +32,7 @@ class BookCard extends StatelessWidget {
     this.progressBadgeColor,
     this.userRating,
     this.isInLibrary = false,
+    this.onRatingChanged,
   });
 
   double? get _progress {
@@ -39,6 +41,52 @@ class BookCard extends StatelessWidget {
   }
 
   int? get _percentage => _progress != null ? (_progress! * 100).round() : null;
+
+  void _showRatingPopup(BuildContext context) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+
+    showMenu<int>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + renderBox.size.width,
+        position.dy + renderBox.size.height,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.grey.shade900,
+      items: [
+        PopupMenuItem<int>(
+          enabled: false,
+          height: 48,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(5, (index) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onRatingChanged?.call(index + 1);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Icon(
+                    index < (userRating ?? 0)
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 28,
+                    color: index < (userRating ?? 0)
+                        ? Colors.amber.shade400
+                        : Colors.grey.shade500,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,40 +131,58 @@ class BookCard extends StatelessWidget {
                     ),
                   ),
                   // Rating badge (only show if not showing progress badge)
-                  // In library: only show user's rating (hide if not rated)
+                  // In library: show user's rating or empty star to rate
                   // Not in library: show average rating
                   if (!showProgressBadge &&
-                      ((isInLibrary && userRating != null) ||
-                          (!isInLibrary && book.averageRating != null)))
+                      (isInLibrary || book.averageRating != null))
                     Positioned(
                       top: 6,
                       right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.star_rounded,
-                              size: 12,
-                              color: Colors.amber.shade400,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              isInLibrary
-                                  ? userRating.toString()
-                                  : book.averageRating!.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                      child: GestureDetector(
+                        onTap: isInLibrary && onRatingChanged != null
+                            ? () => _showRatingPopup(context)
+                            : null,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isInLibrary && userRating == null
+                                    ? Icons.star_outline_rounded
+                                    : Icons.star_rounded,
+                                size: 12,
+                                color: isInLibrary && userRating == null
+                                    ? Colors.grey.shade400
+                                    : Colors.amber.shade400,
                               ),
-                            ),
-                          ],
+                              if (isInLibrary && userRating != null) ...[
+                                const SizedBox(width: 2),
+                                Text(
+                                  userRating.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ] else if (!isInLibrary && book.averageRating != null) ...[
+                                const SizedBox(width: 2),
+                                Text(
+                                  book.averageRating!.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

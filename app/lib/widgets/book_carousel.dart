@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../models/user_book.dart';
+import '../providers/books_provider.dart';
 import 'book_card.dart';
 import 'update_progress_dialog.dart';
 
@@ -153,6 +155,9 @@ class _BookCarouselState extends State<BookCarousel> {
                 progressBadgeColor: widget.progressBadgeColor,
                 userRating: userBook.rating,
                 isInLibrary: true,
+                onRatingChanged: (rating) {
+                  context.read<BooksProvider>().updateBookRating(userBook.bookId, rating);
+                },
               ),
             ),
           ),

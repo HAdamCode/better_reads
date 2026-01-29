@@ -72,32 +72,39 @@ class BookcaseShelfRow extends StatelessWidget {
                 Expanded(
                   child: GestureDetector(
                     onTap: onTitleTap,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
                       children: [
-                        Text(
-                          title,
-                          style: currentTheme.headerStyle(
-                            fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: currentTheme.headerStyle(
+                                  fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                                ),
+                              ),
+                              if (subtitle != null)
+                                Text(
+                                  subtitle!,
+                                  style: currentTheme.bodyStyle(
+                                    fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        if (subtitle != null)
-                          Text(
-                            subtitle!,
-                            style: currentTheme.bodyStyle(
-                              fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
-                            ),
+                        if (onTitleTap != null)
+                          Icon(
+                            Icons.chevron_right,
+                            color: currentTheme.textSecondaryColor,
+                            size: 20,
                           ),
                       ],
                     ),
                   ),
                 ),
-                if (onTitleTap != null)
-                  Icon(
-                    Icons.chevron_right,
-                    color: currentTheme.textSecondaryColor,
-                    size: 20,
-                  ),
               ],
             ),
           ),

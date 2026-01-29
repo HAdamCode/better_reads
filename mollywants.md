@@ -1,9 +1,3 @@
-full width click on custom shelves
-
-show shelved ratings and save them inline with the empty star
-
-search by title first
-
 use native bottom bar
 
 quick add for want to read when scrolling
