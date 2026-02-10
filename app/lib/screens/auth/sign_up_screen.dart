@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/graphql_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,6 +14,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _handleController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -20,18 +22,57 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String? _errorMessage;
+  bool _isCheckingHandle = false;
+  bool? _isHandleAvailable;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _handleController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
+  Future<void> _checkHandleAvailability(String handle) async {
+    if (handle.length < 3) {
+      setState(() {
+        _isHandleAvailable = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingHandle = true;
+    });
+
+    try {
+      final available = await GraphQLService().isHandleAvailable(handle);
+      if (mounted) {
+        setState(() {
+          _isHandleAvailable = available;
+          _isCheckingHandle = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingHandle = false;
+        });
+      }
+    }
+  }
+
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_isHandleAvailable != true) {
+      setState(() {
+        _errorMessage = 'Please choose an available handle';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -43,6 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
             displayName: _nameController.text.trim(),
+            handle: _handleController.text.trim().toLowerCase(),
           );
       // Navigate to verification screen
       if (mounted) {
@@ -134,6 +176,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     }
                     if (value.length < 2) {
                       return 'Name must be at least 2 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _handleController,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Handle',
+                    prefixIcon: const Icon(Icons.alternate_email),
+                    prefixText: '@',
+                    helperText: 'Your unique username (e.g., @booklover)',
+                    suffixIcon: _isCheckingHandle
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : _isHandleAvailable == null
+                            ? null
+                            : _isHandleAvailable!
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : const Icon(Icons.cancel, color: Colors.red),
+                  ),
+                  onChanged: (value) {
+                    _checkHandleAvailability(value.trim().toLowerCase());
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please choose a handle';
+                    }
+                    if (value.length < 3) {
+                      return 'Handle must be at least 3 characters';
+                    }
+                    if (value.length > 20) {
+                      return 'Handle must be 20 characters or less';
+                    }
+                    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                      return 'Only letters, numbers, and underscores';
+                    }
+                    if (_isHandleAvailable == false) {
+                      return 'This handle is already taken';
                     }
                     return null;
                   },

@@ -1,6 +1,7 @@
 class User {
   final String userId;
   final String email;
+  final String handle;
   final String displayName;
   final String? avatarUrl;
   final String? bio;
@@ -10,6 +11,7 @@ class User {
   User({
     required this.userId,
     required this.email,
+    required this.handle,
     required this.displayName,
     this.avatarUrl,
     this.bio,
@@ -21,6 +23,7 @@ class User {
     return User(
       userId: json['userId'] as String,
       email: json['email'] as String,
+      handle: json['handle'] as String? ?? '',
       displayName: json['displayName'] as String,
       avatarUrl: json['avatarUrl'] as String?,
       bio: json['bio'] as String?,
@@ -33,6 +36,7 @@ class User {
     return {
       'userId': userId,
       'email': email,
+      'handle': handle,
       'displayName': displayName,
       'avatarUrl': avatarUrl,
       'bio': bio,
@@ -44,6 +48,7 @@ class User {
   User copyWith({
     String? userId,
     String? email,
+    String? handle,
     String? displayName,
     String? avatarUrl,
     String? bio,
@@ -53,6 +58,7 @@ class User {
     return User(
       userId: userId ?? this.userId,
       email: email ?? this.email,
+      handle: handle ?? this.handle,
       displayName: displayName ?? this.displayName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,

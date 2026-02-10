@@ -1,6 +1,7 @@
 type User {
   userId: ID!
   email: String!
+  handle: String!
   displayName: String!
   avatarUrl: String
   bio: String
@@ -132,12 +133,14 @@ type ReadingGoal {
 # Input types
 input CreateUserInput {
   email: String!
+  handle: String!
   displayName: String!
   bio: String
   avatarUrl: String
 }
 
 input UpdateUserInput {
+  handle: String
   displayName: String
   bio: String
   avatarUrl: String
@@ -217,6 +220,8 @@ type Query {
   # User queries
   me: User
   getUser(userId: ID!): User
+  getUserByHandle(handle: String!): User
+  isHandleAvailable(handle: String!): Boolean!
   searchUsers(query: String!, limit: Int): [User]
 
   # Book queries

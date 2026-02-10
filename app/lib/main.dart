@@ -15,6 +15,7 @@ import 'providers/shelves_provider.dart';
 import 'providers/lending_provider.dart';
 import 'providers/shelf_theme_provider.dart';
 import 'providers/stats_provider.dart';
+import 'providers/friends_provider.dart';
 import 'router.dart';
 import 'utils/theme.dart';
 
@@ -118,6 +119,7 @@ class _BetterReadsAppState extends State<BetterReadsApp> {
         ChangeNotifierProvider(create: (_) => ShelvesProvider()),
         ChangeNotifierProvider(create: (_) => LendingProvider()),
         ChangeNotifierProvider(create: (_) => ShelfThemeProvider()),
+        ChangeNotifierProvider(create: (_) => FriendsProvider()),
       ],
       child: MaterialApp.router(
         title: 'Better Reads',

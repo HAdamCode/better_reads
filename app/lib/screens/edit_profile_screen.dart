@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
+import '../services/graphql_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -16,10 +19,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
   late TextEditingController _displayNameController;
+  late TextEditingController _handleController;
   bool _isLoading = false;
   bool _isUploadingImage = false;
   bool _hasChanges = false;
   File? _selectedImage;
+
+  // Handle availability checking
+  String? _originalHandle;
+  bool _isCheckingHandle = false;
+  bool? _isHandleAvailable;
+  Timer? _handleDebounce;
 
   @override
   void initState() {
@@ -27,18 +37,78 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final auth = context.read<AuthProvider>();
     _displayNameController = TextEditingController(text: auth.displayName ?? '');
     _displayNameController.addListener(_onFieldChanged);
+
+    _originalHandle = auth.handle ?? '';
+    _handleController = TextEditingController(text: _originalHandle);
+    _handleController.addListener(_onHandleChanged);
   }
 
   @override
   void dispose() {
     _displayNameController.removeListener(_onFieldChanged);
     _displayNameController.dispose();
+    _handleController.removeListener(_onHandleChanged);
+    _handleController.dispose();
+    _handleDebounce?.cancel();
     super.dispose();
   }
 
   void _onFieldChanged() {
+    _checkForChanges();
+  }
+
+  void _onHandleChanged() {
+    _checkForChanges();
+
+    final handle = _handleController.text.trim().toLowerCase();
+
+    // If handle is unchanged from original, clear availability state
+    if (handle == _originalHandle) {
+      setState(() {
+        _isHandleAvailable = null;
+        _isCheckingHandle = false;
+      });
+      _handleDebounce?.cancel();
+      return;
+    }
+
+    // Debounce the availability check
+    _handleDebounce?.cancel();
+    if (handle.length >= 3) {
+      setState(() => _isCheckingHandle = true);
+      _handleDebounce = Timer(const Duration(milliseconds: 500), () {
+        _checkHandleAvailability(handle);
+      });
+    } else {
+      setState(() {
+        _isHandleAvailable = null;
+        _isCheckingHandle = false;
+      });
+    }
+  }
+
+  Future<void> _checkHandleAvailability(String handle) async {
+    try {
+      final available = await GraphQLService().isHandleAvailable(handle);
+      if (mounted && _handleController.text.trim().toLowerCase() == handle) {
+        setState(() {
+          _isHandleAvailable = available;
+          _isCheckingHandle = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCheckingHandle = false);
+      }
+    }
+  }
+
+  void _checkForChanges() {
     final auth = context.read<AuthProvider>();
-    final hasChanges = _displayNameController.text.trim() != (auth.displayName ?? '');
+    final displayNameChanged = _displayNameController.text.trim() != (auth.displayName ?? '');
+    final handleChanged = _handleController.text.trim().toLowerCase() != _originalHandle;
+    final imageChanged = _selectedImage != null;
+    final hasChanges = displayNameChanged || handleChanged || imageChanged;
     if (hasChanges != _hasChanges) {
       setState(() => _hasChanges = hasChanges);
     }
@@ -56,44 +126,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (pickedFile != null) {
         setState(() {
           _selectedImage = File(pickedFile.path);
+          _hasChanges = true;
         });
-        await _uploadImage();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to pick image: $e')),
         );
-      }
-    }
-  }
-
-  Future<void> _uploadImage() async {
-    if (_selectedImage == null) return;
-
-    setState(() => _isUploadingImage = true);
-
-    try {
-      final auth = context.read<AuthProvider>();
-      await auth.uploadProfilePicture(_selectedImage!.path);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated')),
-        );
-        setState(() {
-          _selectedImage = null;
-        });
-      }
-    } on AuthProviderException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUploadingImage = false);
       }
     }
   }
@@ -187,26 +227,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Check if handle is being changed and is not available
+    final newHandle = _handleController.text.trim().toLowerCase();
+    if (newHandle != _originalHandle && _isHandleAvailable == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Handle is not available')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final auth = context.read<AuthProvider>();
       final newDisplayName = _displayNameController.text.trim();
 
+      // Upload new profile picture if selected
+      if (_selectedImage != null) {
+        await auth.uploadProfilePicture(_selectedImage!.path);
+      }
+
+      // Update display name in Cognito
       if (newDisplayName != auth.displayName) {
         await auth.updateDisplayName(newDisplayName);
+      }
+
+      // Update handle in DynamoDB via GraphQL
+      if (newHandle != _originalHandle) {
+        await auth.updateHandle(newHandle);
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
         );
-        Navigator.of(context).pop();
+        context.go('/profile');
       }
     } on AuthProviderException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile: $e')),
         );
       }
     } finally {
@@ -243,16 +309,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_hasChanges,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
+        if (_hasChanges) {
+          final shouldPop = await _onWillPop();
+          if (shouldPop && context.mounted) {
+            context.go('/profile');
+          }
+        } else {
+          context.go('/profile');
         }
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () async {
+              if (_hasChanges) {
+                final shouldPop = await _onWillPop();
+                if (shouldPop && context.mounted) {
+                  context.go('/profile');
+                }
+              } else {
+                context.go('/profile');
+              }
+            },
+          ),
           title: const Text('Edit Profile'),
           actions: [
             TextButton(
@@ -277,6 +360,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _buildAvatarSection(),
                 const SizedBox(height: 32),
                 _buildDisplayNameField(),
+                const SizedBox(height: 16),
+                _buildHandleField(),
                 const SizedBox(height: 16),
                 _buildEmailField(),
               ],
@@ -424,6 +509,73 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             }
             return null;
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHandleField() {
+    final handle = _handleController.text.trim().toLowerCase();
+    final isChanged = handle != _originalHandle;
+
+    Widget? suffixIcon;
+    if (isChanged && handle.length >= 3) {
+      if (_isCheckingHandle) {
+        suffixIcon = const Padding(
+          padding: EdgeInsets.all(12),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      } else if (_isHandleAvailable == true) {
+        suffixIcon = const Icon(Icons.check_circle, color: Colors.green);
+      } else if (_isHandleAvailable == false) {
+        suffixIcon = const Icon(Icons.cancel, color: Colors.red);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Handle',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _handleController,
+          decoration: InputDecoration(
+            hintText: 'your_handle',
+            prefixIcon: const Icon(Icons.alternate_email),
+            suffixIcon: suffixIcon,
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter a handle';
+            }
+            final trimmed = value.trim();
+            if (trimmed.length < 3) {
+              return 'Handle must be at least 3 characters';
+            }
+            if (trimmed.length > 20) {
+              return 'Handle must be at most 20 characters';
+            }
+            if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(trimmed)) {
+              return 'Only letters, numbers, and underscores';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Others can find you by @${handle.isNotEmpty ? handle : 'handle'}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade500,
+              ),
         ),
       ],
     );

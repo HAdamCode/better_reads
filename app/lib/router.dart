@@ -20,6 +20,8 @@ import 'screens/status_shelf_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/stats_screen.dart';
+import 'screens/friends_screen.dart';
+import 'screens/user_profile_screen.dart';
 
 GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
   return GoRouter(
@@ -176,6 +178,27 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
           key: state.pageKey,
           child: const ImportScreen(),
         ),
+      ),
+
+      // Friends
+      GoRoute(
+        path: '/friends',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const FriendsScreen(),
+        ),
+      ),
+
+      // User Profile (viewing another user's profile)
+      GoRoute(
+        path: '/user/:userId',
+        pageBuilder: (context, state) {
+          final userId = state.pathParameters['userId']!;
+          return MaterialPage(
+            key: state.pageKey,
+            child: UserProfileScreen(userId: userId),
+          );
+        },
       ),
     ],
   );

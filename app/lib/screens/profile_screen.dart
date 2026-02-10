@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../providers/books_provider.dart';
+import '../providers/friends_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -29,6 +30,8 @@ class ProfileScreen extends StatelessWidget {
             _buildProfileHeader(context),
             const SizedBox(height: 24),
             _buildStats(context),
+            const SizedBox(height: 24),
+            _buildFriendsSection(context),
             const SizedBox(height: 24),
             _buildReadingGoal(context),
             const SizedBox(height: 24),
@@ -171,6 +174,58 @@ class ProfileScreen extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildFriendsSection(BuildContext context) {
+    return Consumer<FriendsProvider>(
+      builder: (context, provider, _) {
+        return Card(
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.people,
+                color: Colors.purple.shade600,
+              ),
+            ),
+            title: const Text('Friends'),
+            subtitle: Text(
+              provider.friendCount == 0
+                  ? 'Find friends to see what they\'re reading'
+                  : '${provider.friendCount} friend${provider.friendCount == 1 ? '' : 's'}',
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (provider.pendingRequestCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${provider.pendingRequestCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            onTap: () => context.push('/friends'),
+          ),
+        );
+      },
     );
   }
 

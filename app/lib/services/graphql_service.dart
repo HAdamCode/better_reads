@@ -1001,4 +1001,458 @@ class GraphQLService {
       rethrow;
     }
   }
+
+  // ========================================
+  // USERS & HANDLES
+  // ========================================
+
+  /// Create a user record in DynamoDB
+  Future<Map<String, dynamic>?> createUser({
+    required String email,
+    required String handle,
+    required String displayName,
+  }) async {
+    const mutation = '''
+      mutation CreateUser(\$input: CreateUserInput!) {
+        createUser(input: \$input) {
+          userId
+          email
+          handle
+          displayName
+          avatarUrl
+          bio
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {
+          'input': {
+            'email': email,
+            'handle': handle,
+            'displayName': displayName,
+          },
+        },
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['createUser'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to create user: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if a handle is available
+  Future<bool> isHandleAvailable(String handle) async {
+    const query = '''
+      query IsHandleAvailable(\$handle: String!) {
+        isHandleAvailable(handle: \$handle)
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'handle': handle},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return false;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['isHandleAvailable'] as bool? ?? false;
+    } catch (e) {
+      debugPrint('Failed to check handle availability: $e');
+      rethrow;
+    }
+  }
+
+  /// Get a user by their handle
+  Future<Map<String, dynamic>?> getUserByHandle(String handle) async {
+    const query = '''
+      query GetUserByHandle(\$handle: String!) {
+        getUserByHandle(handle: \$handle) {
+          userId
+          handle
+          displayName
+          avatarUrl
+          bio
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'handle': handle},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['getUserByHandle'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to get user by handle: $e');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // FRIENDS
+  // ========================================
+
+  /// Search users by display name or handle
+  Future<List<Map<String, dynamic>>> searchUsers(String query, {int? limit}) async {
+    const gqlQuery = '''
+      query SearchUsers(\$query: String!, \$limit: Int) {
+        searchUsers(query: \$query, limit: \$limit) {
+          userId
+          handle
+          displayName
+          avatarUrl
+          bio
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: gqlQuery,
+        variables: {
+          'query': query,
+          if (limit != null) 'limit': limit,
+        },
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final users = data['searchUsers'] as List<dynamic>? ?? [];
+      return users.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to search users: $e');
+      rethrow;
+    }
+  }
+
+  /// Get a user by ID
+  Future<Map<String, dynamic>?> getUser(String userId) async {
+    const query = '''
+      query GetUser(\$userId: ID!) {
+        getUser(userId: \$userId) {
+          userId
+          email
+          handle
+          displayName
+          avatarUrl
+          bio
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'userId': userId},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['getUser'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to get user: $e');
+      rethrow;
+    }
+  }
+
+  /// Get books for a specific user (for viewing friend's library)
+  Future<List<Map<String, dynamic>>> getUserBooks(String userId) async {
+    const query = '''
+      query GetUserBooks(\$userId: ID!) {
+        getUserBooks(userId: \$userId) {
+          userId
+          bookId
+          shelf
+          customShelfIds
+          rating
+          notes
+          totalPages
+          startedAt
+          finishedAt
+          pagesRead
+          addedAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'userId': userId},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final books = data['getUserBooks'] as List<dynamic>? ?? [];
+      return books.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to get user books: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch current user's friends (accepted only)
+  Future<List<Map<String, dynamic>>> fetchFriends() async {
+    const query = '''
+      query GetFriends {
+        getFriends {
+          userId
+          friendId
+          status
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(document: query);
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final friends = data['getFriends'] as List<dynamic>? ?? [];
+      return friends.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to fetch friends: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch pending friend requests sent TO the current user
+  Future<List<Map<String, dynamic>>> fetchFriendRequests() async {
+    const query = '''
+      query GetFriendRequests {
+        getFriendRequests {
+          userId
+          friendId
+          status
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(document: query);
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final requests = data['getFriendRequests'] as List<dynamic>? ?? [];
+      return requests.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to fetch friend requests: $e');
+      rethrow;
+    }
+  }
+
+  /// Send a friend request to another user
+  Future<Map<String, dynamic>?> addFriend(String friendId) async {
+    const mutation = '''
+      mutation AddFriend(\$friendId: ID!) {
+        addFriend(friendId: \$friendId) {
+          userId
+          friendId
+          status
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {'friendId': friendId},
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['addFriend'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to add friend: $e');
+      rethrow;
+    }
+  }
+
+  /// Accept a friend request
+  Future<Map<String, dynamic>?> acceptFriend(String friendId) async {
+    const mutation = '''
+      mutation AcceptFriend(\$friendId: ID!) {
+        acceptFriend(friendId: \$friendId) {
+          userId
+          friendId
+          status
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {'friendId': friendId},
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['acceptFriend'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to accept friend: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove a friend or decline a request
+  Future<bool> removeFriend(String friendId) async {
+    const mutation = '''
+      mutation RemoveFriend(\$friendId: ID!) {
+        removeFriend(friendId: \$friendId) {
+          friendId
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {'friendId': friendId},
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Failed to remove friend: $e');
+      rethrow;
+    }
+  }
+
+  /// Update the current user's profile
+  Future<void> updateUser({
+    String? handle,
+    String? displayName,
+    String? bio,
+    String? avatarUrl,
+  }) async {
+    const mutation = '''
+      mutation UpdateUser(\$input: UpdateUserInput!) {
+        updateUser(input: \$input) {
+          userId
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final input = <String, dynamic>{};
+      if (handle != null) input['handle'] = handle;
+      if (displayName != null) input['displayName'] = displayName;
+      if (bio != null) input['bio'] = bio;
+      if (avatarUrl != null) input['avatarUrl'] = avatarUrl;
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {'input': input},
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+    } catch (e) {
+      debugPrint('Failed to update user: $e');
+      rethrow;
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import '../services/graphql_service.dart';
 
 enum AuthStatus {
   unknown,
@@ -12,13 +13,19 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.unknown;
   String? _userId;
   String? _email;
+  String? _handle;
   String? _displayName;
   String? _profilePictureKey;
   String? _profilePictureUrl;
 
+  // Temporary storage for pending sign-up data
+  String? _pendingHandle;
+  String? _pendingDisplayName;
+
   AuthStatus get status => _status;
   String? get userId => _userId;
   String? get email => _email;
+  String? get handle => _handle;
   String? get displayName => _displayName;
   String? get profilePictureKey => _profilePictureKey;
   String? get profilePictureUrl => _profilePictureUrl;
@@ -51,20 +58,56 @@ class AuthProvider extends ChangeNotifier {
           _email = attr.value;
         } else if (attr.userAttributeKey == AuthUserAttributeKey.name) {
           _displayName = attr.value;
-        } else if (attr.userAttributeKey.key == 'custom:avatarUrl') {
-          _profilePictureKey = attr.value;
         }
       }
 
       final user = await Amplify.Auth.getCurrentUser();
       _userId = user.userId;
 
-      // Fetch the profile picture URL if we have a key
-      if (_profilePictureKey != null && _profilePictureKey!.isNotEmpty) {
-        await _refreshProfilePictureUrl();
-      }
+      // Fetch handle and avatar from DynamoDB
+      await _fetchUserDataFromBackend();
     } catch (e) {
       debugPrint('Error fetching user attributes: $e');
+    }
+  }
+
+  Future<void> _fetchUserDataFromBackend() async {
+    if (_userId == null) return;
+    try {
+      final userData = await GraphQLService().getUser(_userId!);
+      if (userData != null) {
+        _handle = userData['handle'] as String?;
+        final avatarUrl = userData['avatarUrl'] as String?;
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          _profilePictureKey = avatarUrl;
+          await _refreshProfilePictureUrl();
+        }
+        debugPrint('Loaded user data: handle=$_handle, avatarUrl=$_profilePictureKey');
+      } else {
+        // User record doesn't exist in DynamoDB - create it
+        await _ensureUserRecordExists();
+      }
+    } catch (e) {
+      debugPrint('Error fetching user data from backend: $e');
+      // Try to create user record if fetch failed
+      await _ensureUserRecordExists();
+    }
+  }
+
+  Future<void> _ensureUserRecordExists() async {
+    if (_userId == null || _email == null) return;
+    try {
+      // Generate a default handle from email
+      final defaultHandle = _email!.split('@').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+      await GraphQLService().createUser(
+        email: _email!,
+        handle: defaultHandle,
+        displayName: _displayName ?? _email!.split('@').first,
+      );
+      _handle = defaultHandle;
+      debugPrint('Created user record in DynamoDB');
+    } catch (e) {
+      debugPrint('Error creating user record: $e');
     }
   }
 
@@ -89,8 +132,13 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String displayName,
+    required String handle,
   }) async {
     try {
+      // Store pending data for after confirmation
+      _pendingHandle = handle;
+      _pendingDisplayName = displayName;
+
       final result = await Amplify.Auth.signUp(
         username: email,
         password: password,
@@ -150,6 +198,24 @@ class AuthProvider extends ChangeNotifier {
       if (result.isSignedIn) {
         await _fetchUserAttributes();
         _status = AuthStatus.authenticated;
+
+        // Create user record in DynamoDB if this is a new sign-up
+        if (_pendingHandle != null && _pendingDisplayName != null) {
+          try {
+            await GraphQLService().createUser(
+              email: email,
+              handle: _pendingHandle!,
+              displayName: _pendingDisplayName!,
+            );
+            _handle = _pendingHandle;
+          } catch (e) {
+            debugPrint('Failed to create user record: $e');
+          } finally {
+            _pendingHandle = null;
+            _pendingDisplayName = null;
+          }
+        }
+
         notifyListeners();
       }
     } on AuthException catch (e) {
@@ -163,9 +229,12 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.unauthenticated;
       _userId = null;
       _email = null;
+      _handle = null;
       _displayName = null;
       _profilePictureKey = null;
       _profilePictureUrl = null;
+      _pendingHandle = null;
+      _pendingDisplayName = null;
       notifyListeners();
     } on AuthException catch (e) {
       throw AuthProviderException(e.message);
@@ -209,6 +278,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateHandle(String handle) async {
+    try {
+      await GraphQLService().updateUser(handle: handle);
+      _handle = handle;
+      notifyListeners();
+    } catch (e) {
+      throw AuthProviderException('Failed to update handle: $e');
+    }
+  }
+
   Future<void> uploadProfilePicture(String filePath) async {
     if (_userId == null) {
       throw AuthProviderException('User not authenticated');
@@ -229,19 +308,18 @@ class AuthProvider extends ChangeNotifier {
         ),
       ).result;
 
-      // Update the user attribute with the new key
-      await Amplify.Auth.updateUserAttribute(
-        userAttributeKey: CognitoUserAttributeKey.custom('avatarUrl'),
-        value: key,
-      );
+      // Save the key to DynamoDB (more reliable than Cognito custom attributes)
+      debugPrint('Saving profile picture key to DynamoDB: $key');
+      await GraphQLService().updateUser(avatarUrl: key);
+      debugPrint('Profile picture key saved successfully');
 
       _profilePictureKey = key;
       await _refreshProfilePictureUrl();
       notifyListeners();
     } on StorageException catch (e) {
       throw AuthProviderException('Failed to upload image: ${e.message}');
-    } on AuthException catch (e) {
-      throw AuthProviderException(e.message);
+    } catch (e) {
+      throw AuthProviderException('Failed to save profile picture: $e');
     }
   }
 
@@ -254,19 +332,16 @@ class AuthProvider extends ChangeNotifier {
         path: StoragePath.fromString(_profilePictureKey!),
       ).result;
 
-      // Clear the user attribute
-      await Amplify.Auth.updateUserAttribute(
-        userAttributeKey: CognitoUserAttributeKey.custom('avatarUrl'),
-        value: '',
-      );
+      // Clear the avatarUrl in DynamoDB
+      await GraphQLService().updateUser(avatarUrl: '');
 
       _profilePictureKey = null;
       _profilePictureUrl = null;
       notifyListeners();
     } on StorageException catch (e) {
       throw AuthProviderException('Failed to remove image: ${e.message}');
-    } on AuthException catch (e) {
-      throw AuthProviderException(e.message);
+    } catch (e) {
+      throw AuthProviderException('Failed to remove profile picture: $e');
     }
   }
 }

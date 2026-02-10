@@ -181,6 +181,12 @@ export class InfraStack extends cdk.Stack {
       partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
     });
 
+    // Add GSI for handle lookup
+    usersTable.addGlobalSecondaryIndex({
+      indexName: 'byHandle',
+      partitionKey: { name: 'handle', type: dynamodb.AttributeType.STRING },
+    });
+
     // Books cache table
     const booksTable = new dynamodb.Table(this, 'BooksTable', {
       tableName: 'BetterReads-Books',
@@ -229,6 +235,13 @@ export class InfraStack extends cdk.Stack {
       sortKey: { name: 'friendId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for looking up friend requests sent TO a user
+    friendsTable.addGlobalSecondaryIndex({
+      indexName: 'byFriendId',
+      partitionKey: { name: 'friendId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'status', type: dynamodb.AttributeType.STRING },
     });
 
     // Activity feed table
@@ -347,7 +360,26 @@ export class InfraStack extends cdk.Stack {
       typeName: 'Query',
       fieldName: 'getUser',
       requestMappingTemplate: appsync.MappingTemplate.dynamoDbGetItem('userId', 'userId'),
-      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        #if($ctx.result)
+          ## Only include email if viewing own profile
+          #if($ctx.args.userId == $ctx.identity.sub)
+            $util.toJson($ctx.result)
+          #else
+            $util.toJson({
+              "userId": $ctx.result.userId,
+              "handle": $ctx.result.handle,
+              "displayName": $ctx.result.displayName,
+              "avatarUrl": $ctx.result.avatarUrl,
+              "bio": $ctx.result.bio,
+              "createdAt": $ctx.result.createdAt,
+              "updatedAt": $ctx.result.updatedAt
+            })
+          #end
+        #else
+          null
+        #end
+      `),
     });
 
     usersDataSource.createResolver('GetMeResolver', {
@@ -377,6 +409,7 @@ export class InfraStack extends cdk.Stack {
           },
           "attributeValues": {
             "email": $util.dynamodb.toDynamoDBJson($ctx.args.input.email),
+            "handle": $util.dynamodb.toDynamoDBJson($ctx.args.input.handle),
             "displayName": $util.dynamodb.toDynamoDBJson($ctx.args.input.displayName),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601()),
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
@@ -384,6 +417,122 @@ export class InfraStack extends cdk.Stack {
         }
       `),
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // Update user profile
+    usersDataSource.createResolver('UpdateUserResolver', {
+      typeName: 'Mutation',
+      fieldName: 'updateUser',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #set($expNames = {"#updatedAt": "updatedAt"})
+        #set($expValues = {":updatedAt": $util.dynamodb.toDynamoDB($util.time.nowISO8601())})
+        #set($expr = "SET #updatedAt = :updatedAt")
+
+        #if($ctx.args.input.handle)
+          $util.qr($expNames.put("#handle", "handle"))
+          $util.qr($expValues.put(":handle", $util.dynamodb.toDynamoDB($ctx.args.input.handle)))
+          #set($expr = "$expr, #handle = :handle")
+        #end
+
+        #if($ctx.args.input.displayName)
+          $util.qr($expNames.put("#displayName", "displayName"))
+          $util.qr($expValues.put(":displayName", $util.dynamodb.toDynamoDB($ctx.args.input.displayName)))
+          #set($expr = "$expr, #displayName = :displayName")
+        #end
+
+        #if($ctx.args.input.bio)
+          $util.qr($expNames.put("#bio", "bio"))
+          $util.qr($expValues.put(":bio", $util.dynamodb.toDynamoDB($ctx.args.input.bio)))
+          #set($expr = "$expr, #bio = :bio")
+        #end
+
+        #if($ctx.args.input.avatarUrl)
+          $util.qr($expNames.put("#avatarUrl", "avatarUrl"))
+          $util.qr($expValues.put(":avatarUrl", $util.dynamodb.toDynamoDB($ctx.args.input.avatarUrl)))
+          #set($expr = "$expr, #avatarUrl = :avatarUrl")
+        #end
+
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+          },
+          "update": {
+            "expression": "$expr",
+            "expressionNames": $util.toJson($expNames),
+            "expressionValues": $util.toJson($expValues)
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        ## Fetch the complete user after update
+        #set($result = $ctx.result)
+        $util.toJson($result)
+      `),
+    });
+
+    // Get user by handle (strips email for privacy)
+    usersDataSource.createResolver('GetUserByHandleResolver', {
+      typeName: 'Query',
+      fieldName: 'getUserByHandle',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "byHandle",
+          "query": {
+            "expression": "handle = :handle",
+            "expressionValues": {
+              ":handle": $util.dynamodb.toDynamoDBJson($ctx.args.handle)
+            }
+          },
+          "limit": 1
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        #if($ctx.result.items.size() > 0)
+          #set($item = $ctx.result.items[0])
+          $util.toJson({
+            "userId": $item.userId,
+            "handle": $item.handle,
+            "displayName": $item.displayName,
+            "avatarUrl": $item.avatarUrl,
+            "bio": $item.bio,
+            "createdAt": $item.createdAt,
+            "updatedAt": $item.updatedAt
+          })
+        #else
+          null
+        #end
+      `),
+    });
+
+    // Check if handle is available
+    usersDataSource.createResolver('IsHandleAvailableResolver', {
+      typeName: 'Query',
+      fieldName: 'isHandleAvailable',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "byHandle",
+          "query": {
+            "expression": "#handle = :handle",
+            "expressionNames": {
+              "#handle": "handle"
+            },
+            "expressionValues": {
+              ":handle": $util.dynamodb.toDynamoDBJson($ctx.args.handle)
+            }
+          },
+          "limit": 1
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        ## Returns true if no user has this handle
+        $util.toJson($ctx.result.items.size() == 0)
+      `),
     });
 
     // UserBooks resolvers
@@ -579,10 +728,83 @@ export class InfraStack extends cdk.Stack {
             "expressionValues": {
               ":userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
             }
+          },
+          "filter": {
+            "expression": "#status = :accepted",
+            "expressionNames": {
+              "#status": "status"
+            },
+            "expressionValues": {
+              ":accepted": $util.dynamodb.toDynamoDBJson("ACCEPTED")
+            }
           }
         }
       `),
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    // Get pending friend requests sent TO the current user
+    friendsDataSource.createResolver('GetFriendRequestsResolver', {
+      typeName: 'Query',
+      fieldName: 'getFriendRequests',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "byFriendId",
+          "query": {
+            "expression": "friendId = :friendId AND #status = :pending",
+            "expressionNames": {
+              "#status": "status"
+            },
+            "expressionValues": {
+              ":friendId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+              ":pending": $util.dynamodb.toDynamoDBJson("PENDING")
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    // Search users by display name
+    usersDataSource.createResolver('SearchUsersResolver', {
+      typeName: 'Query',
+      fieldName: 'searchUsers',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Scan",
+          "filter": {
+            "expression": "contains(#displayName, :query) OR contains(#handle, :query)",
+            "expressionNames": {
+              "#displayName": "displayName",
+              "#handle": "handle"
+            },
+            "expressionValues": {
+              ":query": $util.dynamodb.toDynamoDBJson($ctx.args.query)
+            }
+          },
+          "limit": $util.defaultIfNull($ctx.args.limit, 20)
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.fromString(`
+        ## Remove email from results for privacy
+        #set($results = [])
+        #foreach($item in $ctx.result.items)
+          #set($user = {
+            "userId": $item.userId,
+            "handle": $item.handle,
+            "displayName": $item.displayName,
+            "avatarUrl": $item.avatarUrl,
+            "bio": $item.bio,
+            "createdAt": $item.createdAt,
+            "updatedAt": $item.updatedAt
+          })
+          $util.qr($results.add($user))
+        #end
+        $util.toJson($results)
+      `),
     });
 
     friendsDataSource.createResolver('AddFriendResolver', {
@@ -599,6 +821,49 @@ export class InfraStack extends cdk.Stack {
           "attributeValues": {
             "status": $util.dynamodb.toDynamoDBJson("PENDING"),
             "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // Accept friend request - updates the requester's record AND creates reciprocal record
+    friendsDataSource.createResolver('AcceptFriendResolver', {
+      typeName: 'Mutation',
+      fieldName: 'acceptFriend',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.args.friendId),
+            "friendId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+          },
+          "update": {
+            "expression": "SET #status = :accepted",
+            "expressionNames": {
+              "#status": "status"
+            },
+            "expressionValues": {
+              ":accepted": $util.dynamodb.toDynamoDBJson("ACCEPTED")
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // Remove friend - delete the friendship record
+    friendsDataSource.createResolver('RemoveFriendResolver', {
+      typeName: 'Mutation',
+      fieldName: 'removeFriend',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "DeleteItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "friendId": $util.dynamodb.toDynamoDBJson($ctx.args.friendId)
           }
         }
       `),

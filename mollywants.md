@@ -1,5 +1,3 @@
-friends
-
 public comments
 
 Destinquish between audio and physical
