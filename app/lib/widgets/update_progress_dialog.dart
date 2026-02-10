@@ -92,14 +92,86 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
     }
   }
 
+  Future<void> _showEditTotalPagesDialog() async {
+    final controller = TextEditingController(
+      text: widget.totalPages?.toString() ?? '',
+    );
+
+    final result = await showDialog<int?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Total Pages'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Total pages',
+            hintText: 'Enter the number of pages',
+          ),
+          onSubmitted: (value) {
+            final pages = int.tryParse(value);
+            Navigator.of(context).pop(pages);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final pages = int.tryParse(controller.text);
+              Navigator.of(context).pop(pages);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result > 0 && mounted) {
+      try {
+        await context.read<BooksProvider>().updateTotalPages(widget.bookId, result);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Total pages set to $result')),
+          );
+          // Close dialog so user sees updated progress card
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _finishBook() async {
+    final booksProvider = context.read<BooksProvider>();
+    // Get effective page count (may have been updated by user)
+    final userBook = booksProvider.getUserBook(widget.bookId);
+    final totalPages = userBook?.effectivePageCount;
+
+    // Require total pages before finishing (needed for statistics)
+    if (totalPages == null || totalPages <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please set the total pages before finishing'),
+        ),
+      );
+      await _showEditTotalPagesDialog();
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
-      final booksProvider = context.read<BooksProvider>();
-      // Update progress to total pages if known
-      if (widget.totalPages != null) {
-        await booksProvider.updateReadingProgress(widget.bookId, widget.totalPages!);
-      }
+      // Update progress to total pages
+      await booksProvider.updateReadingProgress(widget.bookId, totalPages);
       // Move to Read shelf
       await booksProvider.updateBookShelf(widget.bookId, ReadingStatus.read);
       if (mounted) Navigator.of(context).pop(true);
@@ -239,17 +311,29 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
               ],
             ),
 
-            // Total pages hint
-            if (widget.totalPages != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'of ${widget.totalPages} pages',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textMuted,
-                ),
+            // Total pages hint (tappable to edit)
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _showEditTotalPagesDialog,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    (widget.totalPages != null && widget.totalPages! > 0)
+                        ? 'of ${widget.totalPages} pages'
+                        : 'Set total pages',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.primaryColor,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppTheme.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.edit, size: 14, color: AppTheme.primaryColor),
+                ],
               ),
-            ],
+            ),
 
             const SizedBox(height: 8),
             Text(

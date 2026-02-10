@@ -275,6 +275,31 @@ export class InfraStack extends cdk.Stack {
       sortKey: { name: 'bookId', type: dynamodb.AttributeType.STRING },
     });
 
+    // Reading sessions table (for tracking re-reads)
+    const readingSessionsTable = new dynamodb.Table(this, 'ReadingSessionsTable', {
+      tableName: 'BetterReads-ReadingSessions',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sessionId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for querying sessions by bookId
+    readingSessionsTable.addGlobalSecondaryIndex({
+      indexName: 'byBook',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'bookId', type: dynamodb.AttributeType.STRING },
+    });
+
+    // Reading goals table
+    const readingGoalsTable = new dynamodb.Table(this, 'ReadingGoalsTable', {
+      tableName: 'BetterReads-ReadingGoals',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'year', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // ========================================
     // APPSYNC GRAPHQL API
     // ========================================
@@ -310,6 +335,8 @@ export class InfraStack extends cdk.Stack {
     const readingStatsDataSource = this.api.addDynamoDbDataSource('ReadingStatsDataSource', readingStatsTable);
     const customShelvesDataSource = this.api.addDynamoDbDataSource('CustomShelvesDataSource', customShelvesTable);
     const bookLoansDataSource = this.api.addDynamoDbDataSource('BookLoansDataSource', bookLoansTable);
+    const readingSessionsDataSource = this.api.addDynamoDbDataSource('ReadingSessionsDataSource', readingSessionsTable);
+    const readingGoalsDataSource = this.api.addDynamoDbDataSource('ReadingGoalsDataSource', readingGoalsTable);
 
     // ========================================
     // RESOLVERS
@@ -918,6 +945,181 @@ export class InfraStack extends cdk.Stack {
             "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
             "loanId": $util.dynamodb.toDynamoDBJson($ctx.args.loanId)
           }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // ========================================
+    // READING SESSIONS RESOLVERS
+    // ========================================
+    readingSessionsDataSource.createResolver('GetReadingSessionsResolver', {
+      typeName: 'Query',
+      fieldName: 'getReadingSessions',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "byBook",
+          "query": {
+            "expression": "userId = :userId AND bookId = :bookId",
+            "expressionValues": {
+              ":userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+              ":bookId": $util.dynamodb.toDynamoDBJson($ctx.args.bookId)
+            }
+          },
+          "scanIndexForward": false
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    readingSessionsDataSource.createResolver('GetAllReadingSessionsResolver', {
+      typeName: 'Query',
+      fieldName: 'getAllReadingSessions',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "userId = :userId",
+            "expressionValues": {
+              ":userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    readingSessionsDataSource.createResolver('CreateReadingSessionResolver', {
+      typeName: 'Mutation',
+      fieldName: 'createReadingSession',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "PutItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "sessionId": $util.dynamodb.toDynamoDBJson($util.autoId())
+          },
+          "attributeValues": {
+            "bookId": $util.dynamodb.toDynamoDBJson($ctx.args.input.bookId),
+            "startedAt": $util.dynamodb.toDynamoDBJson($ctx.args.input.startedAt),
+            "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    readingSessionsDataSource.createResolver('UpdateReadingSessionResolver', {
+      typeName: 'Mutation',
+      fieldName: 'updateReadingSession',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #set($expression = "SET bookId = :bookId")
+        #set($expressionValues = {
+          ":bookId": $util.dynamodb.toDynamoDB($ctx.args.input.bookId)
+        })
+        #if($ctx.args.input.startedAt)
+          #set($expression = "$expression, startedAt = :startedAt")
+          $util.qr($expressionValues.put(":startedAt", $util.dynamodb.toDynamoDB($ctx.args.input.startedAt)))
+        #end
+        #if($ctx.args.input.finishedAt)
+          #set($expression = "$expression, finishedAt = :finishedAt")
+          $util.qr($expressionValues.put(":finishedAt", $util.dynamodb.toDynamoDB($ctx.args.input.finishedAt)))
+        #end
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "sessionId": $util.dynamodb.toDynamoDBJson($ctx.args.input.sessionId)
+          },
+          "update": {
+            "expression": "$expression",
+            "expressionValues": $util.toJson($expressionValues)
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    readingSessionsDataSource.createResolver('DeleteReadingSessionResolver', {
+      typeName: 'Mutation',
+      fieldName: 'deleteReadingSession',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "DeleteItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "sessionId": $util.dynamodb.toDynamoDBJson($ctx.args.sessionId)
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // ========================================
+    // READING GOALS RESOLVERS
+    // ========================================
+    readingGoalsDataSource.createResolver('GetReadingGoalsResolver', {
+      typeName: 'Query',
+      fieldName: 'getReadingGoals',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "userId = :userId",
+            "expressionValues": {
+              ":userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    readingGoalsDataSource.createResolver('GetReadingGoalResolver', {
+      typeName: 'Query',
+      fieldName: 'getReadingGoal',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "GetItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "year": $util.dynamodb.toDynamoDBJson($ctx.args.year)
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    readingGoalsDataSource.createResolver('SetReadingGoalResolver', {
+      typeName: 'Mutation',
+      fieldName: 'setReadingGoal',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #set($attributeValues = {
+          "createdAt": $util.dynamodb.toDynamoDB($util.time.nowISO8601()),
+          "updatedAt": $util.dynamodb.toDynamoDB($util.time.nowISO8601())
+        })
+        #if($ctx.args.input.bookGoal)
+          $util.qr($attributeValues.put("bookGoal", $util.dynamodb.toDynamoDB($ctx.args.input.bookGoal)))
+        #end
+        #if($ctx.args.input.pageGoal)
+          $util.qr($attributeValues.put("pageGoal", $util.dynamodb.toDynamoDB($ctx.args.input.pageGoal)))
+        #end
+        {
+          "version": "2017-02-28",
+          "operation": "PutItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "year": $util.dynamodb.toDynamoDBJson($ctx.args.input.year)
+          },
+          "attributeValues": $util.toJson($attributeValues)
         }
       `),
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),

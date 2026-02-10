@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:native_glass_navbar/native_glass_navbar.dart';
+import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/books_provider.dart';
 import 'screens/discover_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/shelves_screen.dart';
@@ -12,8 +16,10 @@ import 'screens/auth/sign_up_screen.dart';
 import 'screens/auth/verify_email_screen.dart';
 import 'screens/isbn_scanner_screen.dart';
 import 'screens/shelf_contents_screen.dart';
+import 'screens/status_shelf_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/import_screen.dart';
+import 'screens/stats_screen.dart';
 
 GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
   return GoRouter(
@@ -92,6 +98,13 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
             ),
           ),
           GoRoute(
+            path: '/stats',
+            pageBuilder: (context, state) => MaterialPage(
+              key: state.pageKey,
+              child: const StatsScreen(),
+            ),
+          ),
+          GoRoute(
             path: '/profile',
             pageBuilder: (context, state) => MaterialPage(
               key: state.pageKey,
@@ -135,6 +148,18 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
         },
       ),
 
+      // Reading Status Shelf (read, currently-reading, want-to-read)
+      GoRoute(
+        path: '/status/:status',
+        pageBuilder: (context, state) {
+          final status = state.pathParameters['status']!;
+          return MaterialPage(
+            key: state.pageKey,
+            child: StatusShelfScreen(status: status),
+          );
+        },
+      ),
+
       // Edit Profile
       GoRoute(
         path: '/edit-profile',
@@ -170,33 +195,60 @@ class ScaffoldWithNavBar extends StatelessWidget {
   int _getCurrentIndex() {
     if (location.startsWith('/search')) return 1;
     if (location.startsWith('/shelves')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/stats')) return 3;
+    if (location.startsWith('/profile')) return 4;
     return 0;
+  }
+
+  void _onNavTap(BuildContext context, int index) {
+    FocusScope.of(context).unfocus();
+    switch (index) {
+      case 0:
+        context.go('/');
+        break;
+      case 1:
+        context.go('/search');
+        break;
+      case 2:
+        context.go('/shelves');
+        break;
+      case 3:
+        // Refresh data when navigating to stats
+        context.read<BooksProvider>().syncFromBackend();
+        context.go('/stats');
+        break;
+      case 4:
+        context.go('/profile');
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Use native glass navbar on iOS, Material NavigationBar on Android
+    if (Platform.isIOS) {
+      return Scaffold(
+        body: child,
+        bottomNavigationBar: NativeGlassNavBar(
+          currentIndex: _getCurrentIndex(),
+          onTap: (index) => _onNavTap(context, index),
+          tabs: const [
+            NativeGlassNavBarItem(label: 'Discover', symbol: 'sparkles'),
+            NativeGlassNavBarItem(label: 'Search', symbol: 'magnifyingglass'),
+            NativeGlassNavBarItem(label: 'Shelves', symbol: 'books.vertical'),
+            NativeGlassNavBarItem(label: 'Stats', symbol: 'chart.bar'),
+            NativeGlassNavBarItem(label: 'Profile', symbol: 'person'),
+          ],
+        ),
+      );
+    }
+
+    // Material 3 NavigationBar for Android
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _getCurrentIndex(),
-        onDestinationSelected: (index) {
-          FocusScope.of(context).unfocus();
-          switch (index) {
-            case 0:
-              context.go('/');
-              break;
-            case 1:
-              context.go('/search');
-              break;
-            case 2:
-              context.go('/shelves');
-              break;
-            case 3:
-              context.go('/profile');
-              break;
-          }
-        },
+        onDestinationSelected: (index) => _onNavTap(context, index),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.explore_outlined),
@@ -212,6 +264,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
             icon: Icon(Icons.auto_stories_outlined),
             selectedIcon: Icon(Icons.auto_stories),
             label: 'Shelves',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: 'Stats',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outlined),

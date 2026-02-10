@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../widgets/book_list_tile.dart';
+import '../widgets/quick_add_button.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -195,7 +195,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       book: book,
                       heroTag: heroTag,
                       onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
-                      trailing: _buildShelfIndicator(provider, book.isbn),
+                      trailing: QuickAddButton(
+                        book: book,
+                        style: QuickAddButtonStyle.icon,
+                      ),
                     );
                   },
                 );
@@ -260,26 +263,4 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget? _buildShelfIndicator(BooksProvider provider, String bookId) {
-    final shelf = provider.getBookShelf(bookId);
-    if (shelf == null) return null;
-
-    IconData icon;
-    Color color;
-    switch (shelf) {
-      case Shelf.wantToRead:
-        icon = Icons.bookmark_outline;
-        color = Colors.blue;
-      case Shelf.currentlyReading:
-        icon = Icons.menu_book;
-        color = Colors.orange;
-      case Shelf.read:
-        icon = Icons.check_circle;
-        color = Colors.green;
-      case Shelf.none:
-        return null;
-    }
-
-    return Icon(icon, color: color, size: 20);
-  }
 }

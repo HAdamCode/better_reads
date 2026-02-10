@@ -17,6 +17,8 @@ class GraphQLService {
           shelf
           customShelfIds
           rating
+          notes
+          totalPages
           startedAt
           finishedAt
           pagesRead
@@ -54,6 +56,8 @@ class GraphQLService {
     required String shelf,
     List<String>? customShelfIds,
     int? rating,
+    String? notes,
+    int? totalPages,
     DateTime? startedAt,
     DateTime? finishedAt,
     int? pagesRead,
@@ -66,6 +70,8 @@ class GraphQLService {
           shelf
           customShelfIds
           rating
+          notes
+          totalPages
           startedAt
           finishedAt
           pagesRead
@@ -82,6 +88,8 @@ class GraphQLService {
           'shelf': shelf,
           if (customShelfIds != null && customShelfIds.isNotEmpty) 'customShelfIds': customShelfIds,
           if (rating != null) 'rating': rating,
+          if (notes != null) 'notes': notes,
+          if (totalPages != null) 'totalPages': totalPages,
           if (startedAt != null) 'startedAt': startedAt.toUtc().toIso8601String(),
           if (finishedAt != null) 'finishedAt': finishedAt.toUtc().toIso8601String(),
           if (pagesRead != null) 'pagesRead': pagesRead,
@@ -115,6 +123,8 @@ class GraphQLService {
     required String shelf,
     List<String>? customShelfIds,
     int? rating,
+    String? notes,
+    int? totalPages,
     DateTime? startedAt,
     DateTime? finishedAt,
     int? pagesRead,
@@ -127,6 +137,8 @@ class GraphQLService {
           shelf
           customShelfIds
           rating
+          notes
+          totalPages
           startedAt
           finishedAt
           pagesRead
@@ -143,6 +155,8 @@ class GraphQLService {
           'shelf': shelf,
           if (customShelfIds != null) 'customShelfIds': customShelfIds,
           if (rating != null) 'rating': rating,
+          if (notes != null) 'notes': notes,
+          if (totalPages != null) 'totalPages': totalPages,
           if (startedAt != null) 'startedAt': startedAt.toUtc().toIso8601String(),
           if (finishedAt != null) 'finishedAt': finishedAt.toUtc().toIso8601String(),
           if (pagesRead != null) 'pagesRead': pagesRead,
@@ -195,6 +209,216 @@ class GraphQLService {
       return true;
     } catch (e) {
       debugPrint('Failed to remove book from shelf: $e');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // READING SESSIONS
+  // ========================================
+
+  /// Fetch reading sessions for a specific book
+  Future<List<Map<String, dynamic>>> fetchReadingSessions(String bookId) async {
+    const query = '''
+      query GetReadingSessions(\$bookId: String!) {
+        getReadingSessions(bookId: \$bookId) {
+          userId
+          bookId
+          sessionId
+          startedAt
+          finishedAt
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'bookId': bookId},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final sessions = data['getReadingSessions'] as List<dynamic>?;
+      return sessions?.map((s) => s as Map<String, dynamic>).toList() ?? [];
+    } catch (e) {
+      debugPrint('Failed to fetch reading sessions: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch all reading sessions for the current user
+  Future<List<Map<String, dynamic>>> fetchAllReadingSessions() async {
+    const query = '''
+      query GetAllReadingSessions {
+        getAllReadingSessions {
+          userId
+          bookId
+          sessionId
+          startedAt
+          finishedAt
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(document: query);
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final sessions = data['getAllReadingSessions'] as List<dynamic>?;
+      return sessions?.map((s) => s as Map<String, dynamic>).toList() ?? [];
+    } catch (e) {
+      debugPrint('Failed to fetch all reading sessions: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a new reading session
+  Future<Map<String, dynamic>?> createReadingSession({
+    required String bookId,
+    required DateTime startedAt,
+  }) async {
+    const mutation = '''
+      mutation CreateReadingSession(\$input: CreateReadingSessionInput!) {
+        createReadingSession(input: \$input) {
+          userId
+          bookId
+          sessionId
+          startedAt
+          finishedAt
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final variables = {
+        'input': {
+          'bookId': bookId,
+          'startedAt': startedAt.toUtc().toIso8601String(),
+        },
+      };
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: variables,
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['createReadingSession'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to create reading session: $e');
+      rethrow;
+    }
+  }
+
+  /// Update a reading session
+  Future<Map<String, dynamic>?> updateReadingSession({
+    required String sessionId,
+    required String bookId,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+  }) async {
+    const mutation = '''
+      mutation UpdateReadingSession(\$input: UpdateReadingSessionInput!) {
+        updateReadingSession(input: \$input) {
+          userId
+          bookId
+          sessionId
+          startedAt
+          finishedAt
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final variables = {
+        'input': {
+          'sessionId': sessionId,
+          'bookId': bookId,
+          if (startedAt != null) 'startedAt': startedAt.toUtc().toIso8601String(),
+          if (finishedAt != null) 'finishedAt': finishedAt.toUtc().toIso8601String(),
+        },
+      };
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: variables,
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['updateReadingSession'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to update reading session: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a reading session
+  Future<bool> deleteReadingSession({
+    required String sessionId,
+    required String bookId,
+  }) async {
+    const mutation = '''
+      mutation DeleteReadingSession(\$sessionId: ID!, \$bookId: String!) {
+        deleteReadingSession(sessionId: \$sessionId, bookId: \$bookId) {
+          sessionId
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {
+          'sessionId': sessionId,
+          'bookId': bookId,
+        },
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete reading session: $e');
       rethrow;
     }
   }
@@ -649,6 +873,131 @@ class GraphQLService {
       return true;
     } catch (e) {
       debugPrint('Failed to delete loan: $e');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // READING GOALS
+  // ========================================
+
+  /// Fetch all reading goals for the current user
+  Future<List<Map<String, dynamic>>> fetchReadingGoals() async {
+    const query = '''
+      query GetReadingGoals {
+        getReadingGoals {
+          userId
+          year
+          bookGoal
+          pageGoal
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(document: query);
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final goals = data['getReadingGoals'] as List<dynamic>?;
+      return goals?.map((g) => g as Map<String, dynamic>).toList() ?? [];
+    } catch (e) {
+      debugPrint('Failed to fetch reading goals: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch reading goal for a specific year
+  Future<Map<String, dynamic>?> fetchReadingGoal(int year) async {
+    const query = '''
+      query GetReadingGoal(\$year: Int!) {
+        getReadingGoal(year: \$year) {
+          userId
+          year
+          bookGoal
+          pageGoal
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'year': year},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['getReadingGoal'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to fetch reading goal: $e');
+      rethrow;
+    }
+  }
+
+  /// Set or update a reading goal
+  Future<Map<String, dynamic>?> setReadingGoal({
+    required int year,
+    int? bookGoal,
+    int? pageGoal,
+  }) async {
+    const mutation = '''
+      mutation SetReadingGoal(\$input: SetReadingGoalInput!) {
+        setReadingGoal(input: \$input) {
+          userId
+          year
+          bookGoal
+          pageGoal
+          createdAt
+          updatedAt
+        }
+      }
+    ''';
+
+    try {
+      final variables = {
+        'input': {
+          'year': year,
+          if (bookGoal != null) 'bookGoal': bookGoal,
+          if (pageGoal != null) 'pageGoal': pageGoal,
+        },
+      };
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: variables,
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['setReadingGoal'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to set reading goal: $e');
       rethrow;
     }
   }

@@ -59,6 +59,8 @@ class UserBook {
   final ReadingStatus readingStatus;
   final List<String> customShelfIds;
   final int? rating;
+  final String? notes;
+  final int? totalPages; // User-provided page count (overrides API data)
   final DateTime? startedAt;
   final DateTime? finishedAt;
   final int? pagesRead;
@@ -72,6 +74,8 @@ class UserBook {
     required this.readingStatus,
     this.customShelfIds = const [],
     this.rating,
+    this.notes,
+    this.totalPages,
     this.startedAt,
     this.finishedAt,
     this.pagesRead,
@@ -79,6 +83,9 @@ class UserBook {
     required this.updatedAt,
     this.book,
   });
+
+  /// Get effective page count (user-provided or from book metadata)
+  int? get effectivePageCount => totalPages ?? book?.pageCount;
 
   // Legacy getter for backward compatibility
   ReadingStatus get shelf => readingStatus;
@@ -100,6 +107,8 @@ class UserBook {
       readingStatus: ReadingStatusExtension.fromApiValue(statusValue),
       customShelfIds: shelfIds,
       rating: json['rating'] as int?,
+      notes: json['notes'] as String?,
+      totalPages: json['totalPages'] as int?,
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
           : null,
@@ -126,6 +135,8 @@ class UserBook {
       'readingStatus': readingStatus.apiValue,
       'customShelfIds': customShelfIds,
       'rating': rating,
+      'notes': notes,
+      'totalPages': totalPages,
       'startedAt': startedAt?.toIso8601String(),
       'finishedAt': finishedAt?.toIso8601String(),
       'pagesRead': pagesRead,
@@ -141,6 +152,8 @@ class UserBook {
     ReadingStatus? readingStatus,
     List<String>? customShelfIds,
     int? rating,
+    String? notes,
+    int? totalPages,
     DateTime? startedAt,
     DateTime? finishedAt,
     int? pagesRead,
@@ -154,6 +167,8 @@ class UserBook {
       readingStatus: readingStatus ?? this.readingStatus,
       customShelfIds: customShelfIds ?? this.customShelfIds,
       rating: rating ?? this.rating,
+      notes: notes ?? this.notes,
+      totalPages: totalPages ?? this.totalPages,
       startedAt: startedAt ?? this.startedAt,
       finishedAt: finishedAt ?? this.finishedAt,
       pagesRead: pagesRead ?? this.pagesRead,

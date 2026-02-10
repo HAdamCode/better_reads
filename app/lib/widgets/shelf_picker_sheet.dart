@@ -54,6 +54,40 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _removeFromLibrary() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove from library?'),
+        content: const Text(
+          'This will remove the book from all shelves, including your reading progress and rating.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      context.read<BooksProvider>().removeBookFromShelf(widget.bookId);
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Removed from library'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _createNewShelf() async {
     final newShelfId = await CreateShelfDialog.show(context);
     if (newShelfId != null && mounted) {
@@ -147,6 +181,21 @@ class _ShelfPickerSheetState extends State<ShelfPickerSheet> {
                         ],
                       );
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  // Remove from library button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: OutlinedButton.icon(
+                      onPressed: _removeFromLibrary,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Remove from library'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.errorColor,
+                        side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.5)),
+                        minimumSize: const Size(double.infinity, 44),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Divider(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/book.dart';
 import '../utils/theme.dart';
+import 'quick_add_button.dart';
 
 class BookCard extends StatelessWidget {
   final Book book;
@@ -17,6 +18,7 @@ class BookCard extends StatelessWidget {
   final int? userRating;
   final bool isInLibrary;
   final void Function(int rating)? onRatingChanged;
+  final bool showQuickAdd;
 
   const BookCard({
     super.key,
@@ -33,6 +35,7 @@ class BookCard extends StatelessWidget {
     this.userRating,
     this.isInLibrary = false,
     this.onRatingChanged,
+    this.showQuickAdd = false,
   });
 
   double? get _progress {
@@ -194,6 +197,16 @@ class BookCard extends StatelessWidget {
                       child: GestureDetector(
                         onTap: onProgressTap,
                         child: _buildBookmarkBadge(),
+                      ),
+                    ),
+                  // Quick add button (bottom-left)
+                  if (showQuickAdd)
+                    Positioned(
+                      bottom: 6,
+                      left: 6,
+                      child: QuickAddButton(
+                        book: book,
+                        style: QuickAddButtonStyle.badge,
                       ),
                     ),
                 ],

@@ -26,6 +26,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       final booksProvider = context.read<BooksProvider>();
       booksProvider.loadTrendingBooks();
       booksProvider.loadForYouBooks();
+      booksProvider.loadFeaturedBecauseYouRead();
     });
     _scrollController.addListener(_onScroll);
   }
@@ -70,6 +71,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
           // Refresh Trending
           futures.add(booksProvider.loadTrendingBooks(forceRefresh: true));
+
+          // Refresh Because You Read
+          futures.add(booksProvider.loadFeaturedBecauseYouRead(forceRefresh: true));
 
           // Refresh category if selected
           if (browseProvider.selectedCategoryId != null) {
@@ -143,6 +147,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: _buildForYouSection(context),
+              ),
+            ),
+
+            // Because You Read Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: _buildBecauseYouReadSection(context),
               ),
             ),
 
@@ -328,6 +340,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               book: book,
               heroTag: heroTag,
               onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+              showQuickAdd: true,
             );
           },
           childCount: provider.currentBooks.length,
@@ -406,6 +419,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               book: book,
               heroTag: heroTag,
               onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+              showQuickAdd: true,
             );
           },
           childCount: provider.trendingBooks.length,
@@ -504,6 +518,68 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     book: book,
                     heroTag: heroTag,
                     onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+                    showQuickAdd: true,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBecauseYouReadSection(BuildContext context) {
+    return Consumer<BooksProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoadingBecauseYouRead) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: 'Because you read...'),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 180,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primaryColor,
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        final recommendation = provider.featuredBecauseYouRead;
+        if (recommendation == null || recommendation.recommendations.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Because you read',
+              subtitle: recommendation.sourceBookTitle,
+              actionText: 'View book',
+              onAction: () => context.push('/book/${recommendation.sourceBookId}'),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recommendation.recommendations.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final book = recommendation.recommendations[index];
+                  final heroTag = 'book-discover-because-${book.isbn}';
+                  return BookCard(
+                    book: book,
+                    heroTag: heroTag,
+                    onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+                    showQuickAdd: true,
                   );
                 },
               ),

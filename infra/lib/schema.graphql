@@ -33,11 +33,22 @@ type UserBook {
   shelf: Shelf!
   customShelfIds: [String!]
   rating: Int
+  notes: String
+  totalPages: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
   pagesRead: Int
   addedAt: AWSDateTime
   updatedAt: AWSDateTime!
+}
+
+type ReadingSession {
+  userId: ID!
+  bookId: String!
+  sessionId: ID!
+  startedAt: AWSDateTime!
+  finishedAt: AWSDateTime
+  createdAt: AWSDateTime!
 }
 
 type CustomShelf {
@@ -109,6 +120,15 @@ type ReadingStats {
   favoriteGenre: String
 }
 
+type ReadingGoal {
+  userId: ID!
+  year: Int!
+  bookGoal: Int
+  pageGoal: Int
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
 # Input types
 input CreateUserInput {
   email: String!
@@ -128,6 +148,8 @@ input AddBookToShelfInput {
   shelf: Shelf!
   customShelfIds: [String!]
   rating: Int
+  notes: String
+  totalPages: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
   pagesRead: Int
@@ -138,6 +160,8 @@ input UpdateBookShelfInput {
   shelf: Shelf!
   customShelfIds: [String!]
   rating: Int
+  notes: String
+  totalPages: Int
   startedAt: AWSDateTime
   finishedAt: AWSDateTime
   pagesRead: Int
@@ -165,9 +189,27 @@ input LendBookInput {
   borrowerName: String!
 }
 
+input CreateReadingSessionInput {
+  bookId: String!
+  startedAt: AWSDateTime!
+}
+
+input UpdateReadingSessionInput {
+  sessionId: ID!
+  bookId: String!
+  startedAt: AWSDateTime
+  finishedAt: AWSDateTime
+}
+
 input UpdateLoanInput {
   loanId: ID!
   borrowerName: String
+}
+
+input SetReadingGoalInput {
+  year: Int!
+  bookGoal: Int
+  pageGoal: Int
 }
 
 # Queries
@@ -181,6 +223,10 @@ type Query {
   myBooks: [UserBook]
   getUserBooks(userId: ID!): [UserBook]
   getBookReviews(bookId: String!, limit: Int): [Review]
+
+  # Reading session queries
+  getReadingSessions(bookId: String!): [ReadingSession]
+  getAllReadingSessions: [ReadingSession]
 
   # Custom shelf queries
   myCustomShelves: [CustomShelf]
@@ -196,6 +242,10 @@ type Query {
 
   # Stats queries
   getReadingStats: [ReadingStats]
+
+  # Reading goals queries
+  getReadingGoals: [ReadingGoal]
+  getReadingGoal(year: Int!): ReadingGoal
 }
 
 # Mutations
@@ -225,10 +275,18 @@ type Mutation {
   createReview(input: CreateReviewInput!): Review
   deleteReview(bookId: String!, reviewId: ID!): Review
 
+  # Reading session mutations
+  createReadingSession(input: CreateReadingSessionInput!): ReadingSession
+  updateReadingSession(input: UpdateReadingSessionInput!): ReadingSession
+  deleteReadingSession(sessionId: ID!, bookId: String!): ReadingSession
+
   # Social mutations
   addFriend(friendId: ID!): Friend
   acceptFriend(friendId: ID!): Friend
   removeFriend(friendId: ID!): Friend
+
+  # Reading goal mutations
+  setReadingGoal(input: SetReadingGoalInput!): ReadingGoal
 }
 
 # Subscriptions for real-time updates

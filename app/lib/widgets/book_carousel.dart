@@ -100,7 +100,7 @@ class _BookCarouselState extends State<BookCarousel> {
       bookId: userBook.bookId,
       bookTitle: userBook.book?.title ?? 'Unknown',
       currentPage: userBook.pagesRead,
-      totalPages: userBook.book?.pageCount,
+      totalPages: userBook.effectivePageCount,
     );
   }
 
@@ -148,7 +148,7 @@ class _BookCarouselState extends State<BookCarousel> {
                 height: widget.itemHeight,
                 showProgressBadge: widget.showProgressBadges,
                 pagesRead: userBook.pagesRead,
-                totalPages: userBook.book?.pageCount,
+                totalPages: userBook.effectivePageCount,
                 onProgressTap: widget.showProgressBadges
                     ? () => _showProgressDialog(context, userBook)
                     : null,

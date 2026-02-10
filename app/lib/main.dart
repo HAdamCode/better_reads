@@ -14,6 +14,7 @@ import 'providers/browse_provider.dart';
 import 'providers/shelves_provider.dart';
 import 'providers/lending_provider.dart';
 import 'providers/shelf_theme_provider.dart';
+import 'providers/stats_provider.dart';
 import 'router.dart';
 import 'utils/theme.dart';
 
@@ -108,6 +109,11 @@ class _BetterReadsAppState extends State<BetterReadsApp> {
       providers: [
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider.value(value: _booksProvider),
+        ChangeNotifierProxyProvider<BooksProvider, StatsProvider>(
+          create: (context) => StatsProvider(context.read<BooksProvider>()),
+          update: (context, booksProvider, previous) =>
+              previous ?? StatsProvider(booksProvider),
+        ),
         ChangeNotifierProvider(create: (_) => BrowseProvider()),
         ChangeNotifierProvider(create: (_) => ShelvesProvider()),
         ChangeNotifierProvider(create: (_) => LendingProvider()),

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/book.dart';
+import '../models/reading_session.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
 import '../providers/lending_provider.dart';
 import '../services/book_service.dart';
 import '../utils/theme.dart';
+import '../widgets/book_card.dart';
 import '../widgets/shelf_picker_sheet.dart';
 import '../widgets/lend_book_dialog.dart';
 import '../widgets/update_progress_dialog.dart';
+import '../widgets/edit_reading_dates_dialog.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final String isbn;
@@ -27,6 +33,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   bool _isLoading = true;
   String? _error;
   bool _descriptionExpanded = false;
+  BecauseYouReadRecommendation? _relatedBooks;
+  bool _isLoadingRelated = false;
 
   @override
   void initState() {
@@ -44,6 +52,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         _book = fromSearch;
         _isLoading = false;
       });
+      _loadRelatedBooks();
       return;
     }
 
@@ -54,6 +63,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         _book = userBook!.book;
         _isLoading = false;
       });
+      _loadRelatedBooks();
+      _loadReadingSessions();
       return;
     }
 
@@ -73,6 +84,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         _isLoading = false;
         if (book == null) _error = 'Book not found';
       });
+      if (book != null) _loadRelatedBooks();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -100,6 +112,45 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       debugPrint('Failed to fetch full details: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadRelatedBooks() async {
+    if (_book == null) return;
+
+    final provider = context.read<BooksProvider>();
+    final userBook = provider.getUserBook(widget.isbn);
+
+    // Only show for books the user has read or is reading
+    if (userBook == null ||
+        (userBook.readingStatus != ReadingStatus.read &&
+            userBook.readingStatus != ReadingStatus.currentlyReading)) {
+      return;
+    }
+
+    setState(() => _isLoadingRelated = true);
+
+    try {
+      final recommendation = await provider.loadBecauseYouReadForBook(widget.isbn);
+      if (mounted) {
+        setState(() {
+          _relatedBooks = recommendation;
+          _isLoadingRelated = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load related books: $e');
+      if (mounted) setState(() => _isLoadingRelated = false);
+    }
+  }
+
+  Future<void> _loadReadingSessions() async {
+    final provider = context.read<BooksProvider>();
+    final userBook = provider.getUserBook(widget.isbn);
+
+    // Only load for read books
+    if (userBook?.readingStatus != ReadingStatus.read) return;
+
+    await provider.loadReadingSessions(widget.isbn);
   }
 
   @override
@@ -163,6 +214,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       if (_book!.subjects?.isNotEmpty == true) ...[
                         const SizedBox(height: 24),
                         _buildGenres(context),
+                      ],
+                      if (_relatedBooks != null || _isLoadingRelated) ...[
+                        const SizedBox(height: 24),
+                        _buildRelatedBooksSection(context),
                       ],
                     ],
                   ),
@@ -502,6 +557,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               const SizedBox(height: 12),
             ],
 
+            // Reading History (only for read books)
+            if (userBook.readingStatus == ReadingStatus.read) ...[
+              _buildReadingHistoryCard(context, userBook, booksProvider),
+              const SizedBox(height: 12),
+            ],
+
             // Your Rating
             Container(
               padding: const EdgeInsets.all(16),
@@ -560,6 +621,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 ],
               ),
             ),
+
+            // Notes
+            const SizedBox(height: 12),
+            _buildNotesCard(context, userBook, booksProvider),
 
             // Custom Shelves
             if (userBook.customShelfIds.isNotEmpty) ...[
@@ -833,20 +898,226 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   Widget _buildReadingProgressCard(BuildContext context, UserBook userBook, BooksProvider provider) {
     final pagesRead = userBook.pagesRead ?? 0;
-    final totalPages = _book?.pageCount;
+    final totalPages = userBook.effectivePageCount;
     final progress = (totalPages != null && totalPages > 0)
         ? (pagesRead / totalPages).clamp(0.0, 1.0)
         : 0.0;
     final percentage = (progress * 100).round();
 
-    return GestureDetector(
-      onTap: () => UpdateProgressDialog.show(
-        context,
-        bookId: _book!.isbn,
-        bookTitle: _book!.title,
-        currentPage: pagesRead,
-        totalPages: totalPages,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
+        ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bookmark, color: AppTheme.currentlyReadingColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Reading Progress',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const Spacer(),
+              Text(
+                '$percentage%',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.currentlyReadingColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 12,
+              backgroundColor: AppTheme.currentlyReadingColor.withValues(alpha: 0.15),
+              valueColor: AlwaysStoppedAnimation(AppTheme.currentlyReadingColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            (totalPages != null && totalPages > 0)
+                ? 'Page $pagesRead of $totalPages'
+                : 'Page $pagesRead',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => UpdateProgressDialog.show(
+                    context,
+                    bookId: _book!.isbn,
+                    bookTitle: _book!.title,
+                    currentPage: pagesRead,
+                    totalPages: totalPages,
+                  ),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Update'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.currentlyReadingColor,
+                    side: BorderSide(color: AppTheme.currentlyReadingColor.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _finishBook(context),
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  label: const Text('Finish'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.readColor,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _finishBook(BuildContext context) async {
+    final provider = context.read<BooksProvider>();
+    final userBook = provider.getUserBook(_book!.isbn);
+    final totalPages = userBook?.effectivePageCount;
+
+    // Require total pages before finishing (needed for statistics)
+    if (totalPages == null || totalPages <= 0) {
+      final result = await _showSetTotalPagesDialog(context);
+      if (result == null || result <= 0) {
+        return; // User cancelled or entered invalid value
+      }
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Finish Book?'),
+        content: Text('Mark "${_book!.title}" as finished?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.readColor),
+            child: const Text('Finish'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        // Re-fetch userBook to get updated totalPages
+        final updatedUserBook = provider.getUserBook(_book!.isbn);
+        final finalTotalPages = updatedUserBook?.effectivePageCount;
+
+        // Update progress to total pages
+        if (finalTotalPages != null && finalTotalPages > 0) {
+          await provider.updateReadingProgress(_book!.isbn, finalTotalPages);
+        }
+
+        // Move to Read shelf (this will also create/finish the reading session)
+        await provider.updateBookShelf(_book!.isbn, ReadingStatus.read);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Book finished!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to finish: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<int?> _showSetTotalPagesDialog(BuildContext context) async {
+    final controller = TextEditingController();
+
+    final result = await showDialog<int?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Total Pages'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Total pages are required to finish this book.',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Total pages',
+                hintText: 'Enter the number of pages',
+              ),
+              onSubmitted: (value) {
+                final pages = int.tryParse(value);
+                Navigator.of(context).pop(pages);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final pages = int.tryParse(controller.text);
+              Navigator.of(context).pop(pages);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result > 0 && mounted) {
+      await context.read<BooksProvider>().updateTotalPages(_book!.isbn, result);
+    }
+
+    return result;
+  }
+
+  Widget _buildNotesCard(BuildContext context, UserBook userBook, BooksProvider provider) {
+    final hasNotes = userBook.notes != null && userBook.notes!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () => _showEditNotesDialog(context, userBook, provider),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -864,61 +1135,382 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.bookmark, color: AppTheme.currentlyReadingColor, size: 20),
+                Icon(Icons.note_alt_outlined, color: AppTheme.primaryColor, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Reading Progress',
+                  'My Notes',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
                 const Spacer(),
-                Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.currentlyReadingColor,
-                  ),
-                ),
+                Icon(Icons.edit, size: 16, color: AppTheme.textMuted),
               ],
             ),
             const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                backgroundColor: AppTheme.currentlyReadingColor.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation(AppTheme.currentlyReadingColor),
+            if (hasNotes)
+              Text(
+                userBook.notes!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                  height: 1.5,
+                ),
+              )
+            else
+              Text(
+                'Tap to add notes about this book...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textMuted,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  totalPages != null
-                      ? 'Page $pagesRead of $totalPages'
-                      : 'Page $pagesRead',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.edit, size: 14, color: AppTheme.textMuted),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tap to update',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showEditNotesDialog(BuildContext context, UserBook userBook, BooksProvider provider) async {
+    final controller = TextEditingController(text: userBook.notes ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('My Notes'),
+        content: TextField(
+          controller: controller,
+          maxLines: 8,
+          minLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Add your thoughts, quotes, or anything else about this book...',
+            hintStyle: TextStyle(color: AppTheme.textMuted),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      try {
+        await provider.updateNotes(userBook.bookId, result.isEmpty ? null : result);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to save notes: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildReadingHistoryCard(BuildContext context, UserBook userBook, BooksProvider provider) {
+    final sessions = provider.getReadingSessions(_book!.isbn);
+    final readCount = sessions.where((s) => s.isComplete).length;
+
+    // If no sessions exist, show option to add the first one based on userBook dates
+    final hasLegacyDates = userBook.startedAt != null || userBook.finishedAt != null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history, color: AppTheme.readColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Reading History',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const Spacer(),
+              if (readCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.readColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Read $readCount time${readCount > 1 ? 's' : ''}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.readColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Show reading sessions or legacy dates
+          if (sessions.isEmpty && hasLegacyDates) ...[
+            // Show legacy dates from UserBook
+            _buildSessionRow(
+              context,
+              startedAt: userBook.startedAt,
+              finishedAt: userBook.finishedAt,
+              sessionNumber: 1,
+              onTap: () => EditReadingDatesDialog.show(
+                context,
+                bookId: _book!.isbn,
+                bookTitle: _book!.title,
+                startedAt: userBook.startedAt,
+                finishedAt: userBook.finishedAt,
+              ),
+            ),
+          ] else if (sessions.isEmpty) ...[
+            // No sessions and no legacy dates
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No reading dates recorded',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                ),
+              ),
+            ),
+          ] else ...[
+            // Show all sessions
+            ...sessions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final session = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: index < sessions.length - 1 ? 12 : 0),
+                child: _buildSessionRow(
+                  context,
+                  startedAt: session.startedAt,
+                  finishedAt: session.finishedAt,
+                  sessionNumber: sessions.length - index,
+                  isReread: index < sessions.length - 1,
+                  onTap: () => _showEditSessionDialog(session),
+                ),
+              );
+            }),
+          ],
+
+          const SizedBox(height: 16),
+
+          // Read Again button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _startReread(context),
+              icon: const Icon(Icons.replay, size: 18),
+              label: const Text('Read Again'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.readColor,
+                side: BorderSide(color: AppTheme.readColor.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionRow(
+    BuildContext context, {
+    required DateTime? startedAt,
+    required DateTime? finishedAt,
+    required int sessionNumber,
+    bool isReread = false,
+    VoidCallback? onTap,
+  }) {
+    String formatDate(DateTime? date) {
+      if (date == null) return 'Not set';
+      return DateFormat.yMMMd().format(date);
+    }
+
+    String? getDuration() {
+      if (startedAt == null || finishedAt == null) return null;
+      final days = finishedAt.difference(startedAt).inDays;
+      if (days == 0) return 'Same day';
+      if (days == 1) return '1 day';
+      if (days < 7) return '$days days';
+      if (days < 30) {
+        final weeks = (days / 7).round();
+        return '$weeks week${weeks > 1 ? 's' : ''}';
+      }
+      final months = (days / 30).round();
+      return '$months month${months > 1 ? 's' : ''}';
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isReread
+              ? AppTheme.readColor.withValues(alpha: 0.05)
+              : Colors.grey.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isReread
+                ? AppTheme.readColor.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppTheme.readColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '#$sessionNumber',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.readColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        formatDate(startedAt),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      if (finishedAt != null) ...[
+                        const Text(' - ', style: TextStyle(fontSize: 13)),
+                        Text(
+                          formatDate(finishedAt),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (getDuration() != null || isReread) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (isReread) ...[
+                          Icon(Icons.replay, size: 12, color: AppTheme.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Re-read',
+                            style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                          ),
+                          if (getDuration() != null) ...[
+                            Text(' - ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                          ],
+                        ],
+                        if (getDuration() != null)
+                          Text(
+                            getDuration()!,
+                            style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.edit, size: 16, color: AppTheme.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditSessionDialog(ReadingSession session) async {
+    final result = await EditReadingDatesDialog.show(
+      context,
+      bookId: session.bookId,
+      bookTitle: _book!.title,
+      startedAt: session.startedAt,
+      finishedAt: session.finishedAt,
+      sessionId: session.sessionId,
+    );
+
+    if (result == true && mounted) {
+      // Reload sessions to get updated data
+      context.read<BooksProvider>().loadReadingSessions(_book!.isbn);
+    }
+  }
+
+  Future<void> _startReread(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start Re-read?'),
+        content: Text('Start reading "${_book!.title}" again?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.readColor),
+            child: const Text('Start'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final provider = context.read<BooksProvider>();
+        await provider.startReadingSession(_book!.isbn);
+
+        // Also update the book status to currently reading
+        await provider.updateBookShelf(_book!.isbn, ReadingStatus.currentlyReading);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Started re-reading!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to start: $e')),
+          );
+        }
+      }
+    }
   }
 
   IconData _getShelfIcon(ReadingStatus status) {
@@ -965,5 +1557,86 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
     if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
+  }
+
+  Widget _buildRelatedBooksSection(BuildContext context) {
+    if (_isLoadingRelated) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Readers also enjoyed',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.primaryColor,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_relatedBooks == null || _relatedBooks!.recommendations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Determine header based on whether we have author books
+    final hasAuthorBooks = _relatedBooks!.recommendations.any(
+      (b) => b.authors.any((a) => _book!.authors.contains(a)),
+    );
+    final headerText = hasAuthorBooks
+        ? 'More by ${_book!.authors.first}'
+        : 'More like this';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.auto_awesome, color: AppTheme.primaryColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              headerText,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _relatedBooks!.recommendations.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final book = _relatedBooks!.recommendations[index];
+              final heroTag = 'book-detail-related-${book.isbn}';
+              return BookCard(
+                book: book,
+                heroTag: heroTag,
+                onTap: () => context.push('/book/${book.isbn}', extra: heroTag),
+                showQuickAdd: true,
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
