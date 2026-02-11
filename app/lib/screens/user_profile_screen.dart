@@ -406,32 +406,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   void _showRemoveFriendDialog() {
+    final provider = context.read<FriendsProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Remove Friend'),
         content: Text(
           'Are you sure you want to remove ${_user?.displayName ?? 'this user'} as a friend?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
-                await this.context.read<FriendsProvider>().removeFriend(widget.userId);
+                await provider.removeFriend(widget.userId);
                 if (mounted) {
                   context.pop();
-                  ScaffoldMessenger.of(this.context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     const SnackBar(content: Text('Friend removed')),
                   );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(this.context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(content: Text('Failed to remove friend: $e')),
                   );
                 }

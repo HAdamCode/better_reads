@@ -126,7 +126,9 @@ class TasteDiveProvider implements RecommendationProvider {
             lowerTitle.contains('book bundle') ||
             lowerTitle.contains('esampler') ||
             lowerTitle.contains('coloring book') ||
-            lowerTitle.contains('#1-')) continue;
+            lowerTitle.contains('#1-')) {
+          continue;
+        }
 
         // Search Google Books for this title to get full book data
         try {

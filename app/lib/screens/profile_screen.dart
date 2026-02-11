@@ -14,14 +14,6 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Settings screen
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -32,8 +24,6 @@ class ProfileScreen extends StatelessWidget {
             _buildStats(context),
             const SizedBox(height: 24),
             _buildFriendsSection(context),
-            const SizedBox(height: 24),
-            _buildReadingGoal(context),
             const SizedBox(height: 24),
             _buildImportSection(context),
             const SizedBox(height: 24),
@@ -229,66 +219,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReadingGoal(BuildContext context) {
-    // TODO: Make this dynamic based on user settings
-    const int goalBooks = 24;
-    const int booksRead = 0;
-    final progress = booksRead / goalBooks;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '2024 Reading Goal',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: Edit goal
-                  },
-                  child: const Text('Edit'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                backgroundColor: Colors.grey.shade200,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '$booksRead of $goalBooks books',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              booksRead == 0
-                  ? 'Start reading to track your progress!'
-                  : '${((progress) * 100).toInt()}% complete',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade500,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildImportSection(BuildContext context) {
     return Card(
       child: ListTile(
@@ -318,16 +248,16 @@ class ProfileScreen extends StatelessWidget {
         onPressed: () async {
           final confirmed = await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
+            builder: (dialogContext) => AlertDialog(
               title: const Text('Sign Out'),
               content: const Text('Are you sure you want to sign out?'),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
                   child: const Text('Sign Out'),
                 ),
               ],

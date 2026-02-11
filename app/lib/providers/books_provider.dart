@@ -475,7 +475,9 @@ class BooksProvider extends ChangeNotifier {
     if (lower.contains('business') || lower.contains('management') ||
         lower.contains('leadership') || lower.contains('entrepreneur')) return ('business', 4);
     if (lower.contains('biography') || lower.contains('memoir') ||
-        lower.contains('autobiography')) return ('biography', 4);
+        lower.contains('autobiography')) {
+      return ('biography', 4);
+    }
     if (lower.contains('fiction') && !lower.contains('non')) return ('fiction', 4);
     if (lower.contains('literary')) return ('literary_fiction', 4);
 

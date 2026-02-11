@@ -48,9 +48,7 @@ class _ShelfContentsScreenState extends State<ShelfContentsScreen> {
           comparison = ratingB.compareTo(ratingA); // Higher ratings first by default
           break;
         case ShelfSortOption.dateAdded:
-          comparison = (b.addedAt ?? DateTime(1970)).compareTo(
-            a.addedAt ?? DateTime(1970),
-          ); // Newest first by default
+          comparison = b.addedAt.compareTo(a.addedAt); // Newest first by default
           break;
       }
       return _sortAscending ? comparison : -comparison;

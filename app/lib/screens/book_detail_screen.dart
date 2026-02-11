@@ -1029,7 +1029,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true && context.mounted) {
       try {
         // Re-fetch userBook to get updated totalPages
         final updatedUserBook = provider.getUserBook(_book!.isbn);
@@ -1043,13 +1043,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         // Move to Read shelf (this will also create/finish the reading session)
         await provider.updateBookShelf(_book!.isbn, ReadingStatus.read);
 
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Book finished!')),
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to finish: $e')),
           );
@@ -1106,7 +1106,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       ),
     );
 
-    if (result != null && result > 0 && mounted) {
+    if (result != null && result > 0 && context.mounted) {
       await context.read<BooksProvider>().updateTotalPages(_book!.isbn, result);
     }
 
@@ -1205,11 +1205,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       ),
     );
 
-    if (result != null && mounted) {
+    if (result != null && context.mounted) {
       try {
         await provider.updateNotes(userBook.bookId, result.isEmpty ? null : result);
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to save notes: $e')),
           );
@@ -1455,6 +1455,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Future<void> _showEditSessionDialog(ReadingSession session) async {
+    final provider = context.read<BooksProvider>();
     final result = await EditReadingDatesDialog.show(
       context,
       bookId: session.bookId,
@@ -1466,7 +1467,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     if (result == true && mounted) {
       // Reload sessions to get updated data
-      context.read<BooksProvider>().loadReadingSessions(_book!.isbn);
+      provider.loadReadingSessions(_book!.isbn);
     }
   }
 
@@ -1490,7 +1491,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true && context.mounted) {
       try {
         final provider = context.read<BooksProvider>();
         await provider.startReadingSession(_book!.isbn);
@@ -1498,13 +1499,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         // Also update the book status to currently reading
         await provider.updateBookShelf(_book!.isbn, ReadingStatus.currentlyReading);
 
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Started re-reading!')),
           );
         }
       } catch (e) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to start: $e')),
           );

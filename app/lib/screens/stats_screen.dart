@@ -749,15 +749,26 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('🏆', style: TextStyle(fontSize: 28)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Achievement Hall',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 48), // Balance for close button
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('🏆', style: TextStyle(fontSize: 28)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Achievement Hall',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
