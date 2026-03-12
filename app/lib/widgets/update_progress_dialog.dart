@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../models/user_book.dart';
 import '../providers/books_provider.dart';
+import '../providers/locations_provider.dart';
 import '../utils/theme.dart';
 
 class UpdateProgressDialog extends StatefulWidget {
@@ -44,12 +48,14 @@ class UpdateProgressDialog extends StatefulWidget {
 class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
   late TextEditingController _controller;
   late int _currentPage;
+  int? _totalPages;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _currentPage = widget.currentPage ?? 0;
+    _totalPages = widget.totalPages;
     _controller = TextEditingController(text: _currentPage.toString());
   }
 
@@ -60,14 +66,18 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
   }
 
   double get _progress {
-    if (widget.totalPages == null || widget.totalPages == 0) return 0;
-    return (_currentPage / widget.totalPages!).clamp(0.0, 1.0);
+    if (_totalPages == null || _totalPages == 0) return 0;
+    return (_currentPage / _totalPages!).clamp(0.0, 1.0);
   }
 
   int get _percentage => (_progress * 100).round();
 
   void _updatePage(int value) {
-    final maxPage = widget.totalPages ?? 9999;
+    if (_totalPages == null || _totalPages == 0) {
+      _showEditTotalPagesDialog();
+      return;
+    }
+    final maxPage = _totalPages ?? 9999;
     setState(() {
       _currentPage = value.clamp(0, maxPage);
       _controller.text = _currentPage.toString();
@@ -81,7 +91,14 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
             widget.bookId,
             _currentPage,
           );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        // Capture references before popping (dialog context becomes invalid after pop)
+        final locationsProvider = context.read<LocationsProvider>();
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        final router = GoRouter.of(context);
+        Navigator.of(context).pop(true);
+        _autoAddLocation(locationsProvider, scaffoldMessenger, router);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,9 +109,87 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
     }
   }
 
+  Future<void> _autoAddLocation(
+    LocationsProvider locationsProvider,
+    ScaffoldMessengerState scaffoldMessenger,
+    GoRouter router,
+  ) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      // Skip if this book already has a location nearby (~500m)
+      final existingSpots = locationsProvider.getLocationsForBook(widget.bookId);
+      for (final spot in existingSpots) {
+        final distance = Geolocator.distanceBetween(
+          spot.latitude, spot.longitude,
+          position.latitude, position.longitude,
+        );
+        if (distance < 500) return;
+      }
+
+      String locationName = '${position.latitude.toStringAsFixed(2)}, ${position.longitude.toStringAsFixed(2)}';
+      String? address;
+      try {
+        final placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          locationName = place.locality ??
+              place.subAdministrativeArea ??
+              place.administrativeArea ??
+              locationName;
+          address = [
+            place.street,
+            place.locality,
+            place.administrativeArea,
+            place.country,
+          ].where((s) => s != null && s.isNotEmpty).join(', ');
+        }
+      } catch (_) {}
+
+      final location = await locationsProvider.addLocation(
+        bookId: widget.bookId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        locationName: locationName,
+        address: address,
+      );
+
+      if (location != null) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('Reading spot added: $locationName'),
+            action: SnackBarAction(
+              label: 'Edit',
+              onPressed: () => router.push('/location/${location.locationId}'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Auto-add location failed: $e');
+    }
+  }
+
   Future<void> _showEditTotalPagesDialog() async {
     final controller = TextEditingController(
-      text: widget.totalPages?.toString() ?? '',
+      text: _totalPages?.toString() ?? '',
     );
 
     final result = await showDialog<int?>(
@@ -135,11 +230,17 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
       try {
         await context.read<BooksProvider>().updateTotalPages(widget.bookId, result);
         if (mounted) {
+          setState(() {
+            _totalPages = result;
+            // Clamp current page to new total
+            if (_currentPage > result) {
+              _currentPage = result;
+              _controller.text = _currentPage.toString();
+            }
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Total pages set to $result')),
           );
-          // Close dialog so user sees updated progress card
-          Navigator.of(context).pop(true);
         }
       } catch (e) {
         if (mounted) {
@@ -174,7 +275,13 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
       await booksProvider.updateReadingProgress(widget.bookId, totalPages);
       // Move to Read shelf
       await booksProvider.updateBookShelf(widget.bookId, ReadingStatus.read);
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        final locationsProvider = context.read<LocationsProvider>();
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        final router = GoRouter.of(context);
+        Navigator.of(context).pop(true);
+        _autoAddLocation(locationsProvider, scaffoldMessenger, router);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -294,7 +401,10 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
                     onChanged: (value) {
                       final parsed = int.tryParse(value);
                       if (parsed != null) {
-                        _updatePage(parsed);
+                        final maxPage = _totalPages ?? 9999;
+                        setState(() {
+                          _currentPage = parsed.clamp(0, maxPage);
+                        });
                       }
                     },
                   ),
@@ -319,8 +429,8 @@ class _UpdateProgressDialogState extends State<UpdateProgressDialog> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    (widget.totalPages != null && widget.totalPages! > 0)
-                        ? 'of ${widget.totalPages} pages'
+                    (_totalPages != null && _totalPages! > 0)
+                        ? 'of $_totalPages pages'
                         : 'Set total pages',
                     style: TextStyle(
                       fontSize: 14,

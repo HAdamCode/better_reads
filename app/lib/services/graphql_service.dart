@@ -1417,6 +1417,232 @@ class GraphQLService {
     }
   }
 
+  // ========================================
+  // READING LOCATIONS
+  // ========================================
+
+  /// Fetch all reading locations for the current user
+  Future<List<Map<String, dynamic>>> fetchMyReadingLocations() async {
+    const query = '''
+      query MyReadingLocations {
+        myReadingLocations {
+          userId
+          locationId
+          bookId
+          latitude
+          longitude
+          locationName
+          address
+          notes
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(document: query);
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final locations = data['myReadingLocations'] as List<dynamic>? ?? [];
+      return locations.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to fetch reading locations: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch reading locations for a specific user (friend's map)
+  Future<List<Map<String, dynamic>>> fetchUserReadingLocations(String userId) async {
+    const query = '''
+      query GetUserReadingLocations(\$userId: ID!) {
+        getUserReadingLocations(userId: \$userId) {
+          userId
+          locationId
+          bookId
+          latitude
+          longitude
+          locationName
+          address
+          notes
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: query,
+        variables: {'userId': userId},
+      );
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return [];
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      final locations = data['getUserReadingLocations'] as List<dynamic>? ?? [];
+      return locations.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Failed to fetch user reading locations: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a new reading location
+  Future<Map<String, dynamic>?> createReadingLocation({
+    String? bookId,
+    required double latitude,
+    required double longitude,
+    required String locationName,
+    String? address,
+    String? notes,
+  }) async {
+    const mutation = '''
+      mutation CreateReadingLocation(\$input: CreateReadingLocationInput!) {
+        createReadingLocation(input: \$input) {
+          userId
+          locationId
+          bookId
+          latitude
+          longitude
+          locationName
+          address
+          notes
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final variables = {
+        'input': {
+          'latitude': latitude,
+          'longitude': longitude,
+          'locationName': locationName,
+          if (bookId != null) 'bookId': bookId,
+          if (address != null) 'address': address,
+          if (notes != null) 'notes': notes,
+        },
+      };
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: variables,
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['createReadingLocation'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to create reading location: $e');
+      rethrow;
+    }
+  }
+
+  /// Update a reading location
+  Future<Map<String, dynamic>?> updateReadingLocation({
+    required String locationId,
+    String? bookId,
+    String? locationName,
+    String? address,
+    String? notes,
+  }) async {
+    const mutation = '''
+      mutation UpdateReadingLocation(\$input: UpdateReadingLocationInput!) {
+        updateReadingLocation(input: \$input) {
+          userId
+          locationId
+          bookId
+          latitude
+          longitude
+          locationName
+          address
+          notes
+          createdAt
+        }
+      }
+    ''';
+
+    try {
+      final variables = {
+        'input': {
+          'locationId': locationId,
+          if (bookId != null) 'bookId': bookId,
+          if (locationName != null) 'locationName': locationName,
+          if (address != null) 'address': address,
+          if (notes != null) 'notes': notes,
+        },
+      };
+
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: variables,
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      if (response.data == null) return null;
+
+      final data = jsonDecode(response.data!) as Map<String, dynamic>;
+      return data['updateReadingLocation'] as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('Failed to update reading location: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a reading location
+  Future<bool> deleteReadingLocation(String locationId) async {
+    const mutation = '''
+      mutation DeleteReadingLocation(\$locationId: ID!) {
+        deleteReadingLocation(locationId: \$locationId) {
+          locationId
+        }
+      }
+    ''';
+
+    try {
+      final request = GraphQLRequest<String>(
+        document: mutation,
+        variables: {'locationId': locationId},
+      );
+      final response = await Amplify.API.mutate(request: request).response;
+
+      if (response.errors.isNotEmpty) {
+        debugPrint('GraphQL errors: ${response.errors}');
+        throw Exception(response.errors.first.message);
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete reading location: $e');
+      rethrow;
+    }
+  }
+
   /// Update the current user's profile
   Future<void> updateUser({
     String? handle,

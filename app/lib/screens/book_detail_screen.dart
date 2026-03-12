@@ -10,6 +10,7 @@ import '../models/user_book.dart';
 import '../providers/books_provider.dart';
 import '../providers/shelves_provider.dart';
 import '../providers/lending_provider.dart';
+import '../providers/locations_provider.dart';
 import '../services/book_service.dart';
 import '../utils/theme.dart';
 import '../widgets/book_card.dart';
@@ -219,6 +220,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                         const SizedBox(height: 24),
                         _buildRelatedBooksSection(context),
                       ],
+                      _buildReadingSpotsSection(context),
                     ],
                   ),
                 ),
@@ -1558,6 +1560,38 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
     if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
     return count.toString();
+  }
+
+  Widget _buildReadingSpotsSection(BuildContext context) {
+    return Consumer<LocationsProvider>(
+      builder: (context, provider, _) {
+        final spots = provider.getLocationsForBook(widget.isbn);
+        if (spots.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            Text(
+              'Reading Spots',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ...spots.map((spot) => Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.place),
+                    title: Text(spot.locationName),
+                    subtitle: spot.address != null ? Text(spot.address!) : null,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/location/${spot.locationId}'),
+                  ),
+                )),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildRelatedBooksSection(BuildContext context) {

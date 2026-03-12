@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../models/user_book.dart';
 import '../providers/friends_provider.dart';
+import '../providers/locations_provider.dart';
 import '../services/book_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -184,6 +185,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
               ),
+
+            // Reading map section
+            _buildReadingMapSection(),
 
             // Remove friend button
             _buildRemoveFriendButton(),
@@ -382,6 +386,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildReadingMapSection() {
+    return Consumer<LocationsProvider>(
+      builder: (context, provider, _) {
+        final friendLocations = provider.getFriendLocations(widget.userId);
+
+        // Trigger a fetch if not loaded yet (after build completes)
+        if (friendLocations.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            provider.fetchFriendLocations(widget.userId);
+          });
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Card(
+            child: ListTile(
+              leading: const Icon(Icons.map, color: Colors.teal),
+              title: const Text('Reading Map'),
+              subtitle: Text(
+                friendLocations.isEmpty
+                    ? 'No reading spots yet'
+                    : '${friendLocations.length} reading spot${friendLocations.length == 1 ? '' : 's'}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/map'),
+            ),
+          ),
+        );
+      },
     );
   }
 

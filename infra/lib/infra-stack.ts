@@ -304,6 +304,15 @@ export class InfraStack extends cdk.Stack {
       sortKey: { name: 'bookId', type: dynamodb.AttributeType.STRING },
     });
 
+    // Reading locations table
+    const readingLocationsTable = new dynamodb.Table(this, 'ReadingLocationsTable', {
+      tableName: 'BetterReads-ReadingLocations',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'locationId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Reading goals table
     const readingGoalsTable = new dynamodb.Table(this, 'ReadingGoalsTable', {
       tableName: 'BetterReads-ReadingGoals',
@@ -350,6 +359,7 @@ export class InfraStack extends cdk.Stack {
     const bookLoansDataSource = this.api.addDynamoDbDataSource('BookLoansDataSource', bookLoansTable);
     const readingSessionsDataSource = this.api.addDynamoDbDataSource('ReadingSessionsDataSource', readingSessionsTable);
     const readingGoalsDataSource = this.api.addDynamoDbDataSource('ReadingGoalsDataSource', readingGoalsTable);
+    const readingLocationsDataSource = this.api.addDynamoDbDataSource('ReadingLocationsDataSource', readingLocationsTable);
 
     // ========================================
     // RESOLVERS
@@ -601,6 +611,12 @@ export class InfraStack extends cdk.Stack {
             #if($ctx.args.input.pagesRead)
             "pagesRead": $util.dynamodb.toDynamoDBJson($ctx.args.input.pagesRead),
             #end
+            #if($ctx.args.input.totalPages)
+            "totalPages": $util.dynamodb.toDynamoDBJson($ctx.args.input.totalPages),
+            #end
+            #if($ctx.args.input.notes)
+            "notes": $util.dynamodb.toDynamoDBJson($ctx.args.input.notes),
+            #end
             "updatedAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
           }
         }
@@ -636,6 +652,14 @@ export class InfraStack extends cdk.Stack {
         #if($ctx.args.input.pagesRead)
           #set($expression = "$expression, pagesRead = :pagesRead")
           $util.qr($expressionValues.put(":pagesRead", $util.dynamodb.toDynamoDB($ctx.args.input.pagesRead)))
+        #end
+        #if($ctx.args.input.totalPages)
+          #set($expression = "$expression, totalPages = :totalPages")
+          $util.qr($expressionValues.put(":totalPages", $util.dynamodb.toDynamoDB($ctx.args.input.totalPages)))
+        #end
+        #if($ctx.args.input.notes)
+          #set($expression = "$expression, notes = :notes")
+          $util.qr($expressionValues.put(":notes", $util.dynamodb.toDynamoDB($ctx.args.input.notes)))
         #end
         {
           "version": "2017-02-28",
@@ -1385,6 +1409,151 @@ export class InfraStack extends cdk.Stack {
             "year": $util.dynamodb.toDynamoDBJson($ctx.args.input.year)
           },
           "attributeValues": $util.toJson($attributeValues)
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    // ========================================
+    // READING LOCATIONS RESOLVERS
+    // ========================================
+    readingLocationsDataSource.createResolver('GetMyReadingLocationsResolver', {
+      typeName: 'Query',
+      fieldName: 'myReadingLocations',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "userId = :userId",
+            "expressionValues": {
+              ":userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub)
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    readingLocationsDataSource.createResolver('GetUserReadingLocationsResolver', {
+      typeName: 'Query',
+      fieldName: 'getUserReadingLocations',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "query": {
+            "expression": "userId = :userId",
+            "expressionValues": {
+              ":userId": $util.dynamodb.toDynamoDBJson($ctx.args.userId)
+            }
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
+    });
+
+    readingLocationsDataSource.createResolver('CreateReadingLocationResolver', {
+      typeName: 'Mutation',
+      fieldName: 'createReadingLocation',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #set($attributeValues = {
+          "latitude": $util.dynamodb.toDynamoDB($ctx.args.input.latitude),
+          "longitude": $util.dynamodb.toDynamoDB($ctx.args.input.longitude),
+          "locationName": $util.dynamodb.toDynamoDB($ctx.args.input.locationName),
+          "createdAt": $util.dynamodb.toDynamoDB($util.time.nowISO8601())
+        })
+        #if($ctx.args.input.bookId)
+          $util.qr($attributeValues.put("bookId", $util.dynamodb.toDynamoDB($ctx.args.input.bookId)))
+        #end
+        #if($ctx.args.input.address)
+          $util.qr($attributeValues.put("address", $util.dynamodb.toDynamoDB($ctx.args.input.address)))
+        #end
+        #if($ctx.args.input.notes)
+          $util.qr($attributeValues.put("notes", $util.dynamodb.toDynamoDB($ctx.args.input.notes)))
+        #end
+        {
+          "version": "2017-02-28",
+          "operation": "PutItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "locationId": $util.dynamodb.toDynamoDBJson($util.autoId())
+          },
+          "attributeValues": $util.toJson($attributeValues)
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    readingLocationsDataSource.createResolver('UpdateReadingLocationResolver', {
+      typeName: 'Mutation',
+      fieldName: 'updateReadingLocation',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        #set($expNames = {})
+        #set($expValues = {})
+        #set($expr = "SET ")
+        #set($first = true)
+
+        #if($ctx.args.input.locationName)
+          #if(!$first) #set($expr = "$expr, ") #end
+          $util.qr($expNames.put("#locationName", "locationName"))
+          $util.qr($expValues.put(":locationName", $util.dynamodb.toDynamoDB($ctx.args.input.locationName)))
+          #set($expr = "$expr#locationName = :locationName")
+          #set($first = false)
+        #end
+
+        #if($ctx.args.input.bookId)
+          #if(!$first) #set($expr = "$expr, ") #end
+          $util.qr($expNames.put("#bookId", "bookId"))
+          $util.qr($expValues.put(":bookId", $util.dynamodb.toDynamoDB($ctx.args.input.bookId)))
+          #set($expr = "$expr#bookId = :bookId")
+          #set($first = false)
+        #end
+
+        #if($ctx.args.input.address)
+          #if(!$first) #set($expr = "$expr, ") #end
+          $util.qr($expNames.put("#address", "address"))
+          $util.qr($expValues.put(":address", $util.dynamodb.toDynamoDB($ctx.args.input.address)))
+          #set($expr = "$expr#address = :address")
+          #set($first = false)
+        #end
+
+        #if($ctx.args.input.notes)
+          #if(!$first) #set($expr = "$expr, ") #end
+          $util.qr($expNames.put("#notes", "notes"))
+          $util.qr($expValues.put(":notes", $util.dynamodb.toDynamoDB($ctx.args.input.notes)))
+          #set($expr = "$expr#notes = :notes")
+          #set($first = false)
+        #end
+
+        {
+          "version": "2017-02-28",
+          "operation": "UpdateItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "locationId": $util.dynamodb.toDynamoDBJson($ctx.args.input.locationId)
+          },
+          "update": {
+            "expression": "$expr",
+            "expressionNames": $util.toJson($expNames),
+            "expressionValues": $util.toJson($expValues)
+          }
+        }
+      `),
+      responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),
+    });
+
+    readingLocationsDataSource.createResolver('DeleteReadingLocationResolver', {
+      typeName: 'Mutation',
+      fieldName: 'deleteReadingLocation',
+      requestMappingTemplate: appsync.MappingTemplate.fromString(`
+        {
+          "version": "2017-02-28",
+          "operation": "DeleteItem",
+          "key": {
+            "userId": $util.dynamodb.toDynamoDBJson($ctx.identity.sub),
+            "locationId": $util.dynamodb.toDynamoDBJson($ctx.args.locationId)
+          }
         }
       `),
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultItem(),

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../providers/books_provider.dart';
 import '../providers/friends_provider.dart';
+import '../providers/locations_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -22,6 +23,10 @@ class ProfileScreen extends StatelessWidget {
             _buildProfileHeader(context),
             const SizedBox(height: 24),
             _buildStats(context),
+            const SizedBox(height: 24),
+            _buildStatsLink(context),
+            const SizedBox(height: 24),
+            _buildReadingMapCard(context),
             const SizedBox(height: 24),
             _buildFriendsSection(context),
             const SizedBox(height: 24),
@@ -164,6 +169,58 @@ class ProfileScreen extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildStatsLink(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.bar_chart,
+            color: Colors.green.shade600,
+          ),
+        ),
+        title: const Text('My Stats'),
+        subtitle: const Text('View detailed reading statistics'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/stats'),
+      ),
+    );
+  }
+
+  Widget _buildReadingMapCard(BuildContext context) {
+    return Consumer<LocationsProvider>(
+      builder: (context, provider, _) {
+        return Card(
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.teal.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.map,
+                color: Colors.teal.shade600,
+              ),
+            ),
+            title: const Text('My Reading Map'),
+            subtitle: Text(
+              provider.locationCount == 0
+                  ? 'Track where you read around the world'
+                  : '${provider.locationCount} reading spot${provider.locationCount == 1 ? '' : 's'}',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/map'),
+          ),
+        );
+      },
     );
   }
 

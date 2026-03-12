@@ -1113,6 +1113,8 @@ class BooksProvider extends ChangeNotifier {
         shelf: updated.readingStatus.apiValue,
         customShelfIds: updated.customShelfIds,
         rating: updated.rating,
+        notes: updated.notes,
+        totalPages: updated.totalPages,
         startedAt: updated.startedAt,
         finishedAt: updated.finishedAt,
         pagesRead: pagesRead,

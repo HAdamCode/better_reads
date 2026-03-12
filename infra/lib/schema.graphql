@@ -130,6 +130,18 @@ type ReadingGoal {
   updatedAt: AWSDateTime!
 }
 
+type ReadingLocation {
+  userId: ID!
+  locationId: ID!
+  bookId: String
+  latitude: Float!
+  longitude: Float!
+  locationName: String!
+  address: String
+  notes: String
+  createdAt: AWSDateTime!
+}
+
 # Input types
 input CreateUserInput {
   email: String!
@@ -215,6 +227,23 @@ input SetReadingGoalInput {
   pageGoal: Int
 }
 
+input CreateReadingLocationInput {
+  bookId: String
+  latitude: Float!
+  longitude: Float!
+  locationName: String!
+  address: String
+  notes: String
+}
+
+input UpdateReadingLocationInput {
+  locationId: ID!
+  bookId: String
+  locationName: String
+  address: String
+  notes: String
+}
+
 # Queries
 type Query {
   # User queries
@@ -251,6 +280,10 @@ type Query {
   # Reading goals queries
   getReadingGoals: [ReadingGoal]
   getReadingGoal(year: Int!): ReadingGoal
+
+  # Reading locations queries
+  myReadingLocations: [ReadingLocation]
+  getUserReadingLocations(userId: ID!): [ReadingLocation]
 }
 
 # Mutations
@@ -292,6 +325,11 @@ type Mutation {
 
   # Reading goal mutations
   setReadingGoal(input: SetReadingGoalInput!): ReadingGoal
+
+  # Reading location mutations
+  createReadingLocation(input: CreateReadingLocationInput!): ReadingLocation
+  updateReadingLocation(input: UpdateReadingLocationInput!): ReadingLocation
+  deleteReadingLocation(locationId: ID!): ReadingLocation
 }
 
 # Subscriptions for real-time updates

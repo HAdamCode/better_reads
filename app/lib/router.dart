@@ -2,10 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
-import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
-import 'providers/books_provider.dart';
 import 'screens/discover_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/shelves_screen.dart';
@@ -20,6 +18,9 @@ import 'screens/status_shelf_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/stats_screen.dart';
+import 'screens/map_screen.dart';
+import 'screens/add_location_screen.dart';
+import 'screens/location_detail_screen.dart';
 import 'screens/friends_screen.dart';
 import 'screens/user_profile_screen.dart';
 
@@ -100,10 +101,10 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
             ),
           ),
           GoRoute(
-            path: '/stats',
+            path: '/map',
             pageBuilder: (context, state) => MaterialPage(
               key: state.pageKey,
-              child: const StatsScreen(),
+              child: const MapScreen(),
             ),
           ),
           GoRoute(
@@ -114,6 +115,42 @@ GoRouter createRouter(AuthProvider authProvider, bool initiallyAuthenticated) {
             ),
           ),
         ],
+      ),
+
+      // Stats (moved from tab to detail route)
+      GoRoute(
+        path: '/stats',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const StatsScreen(),
+        ),
+      ),
+
+      // Add reading location
+      GoRoute(
+        path: '/add-location',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, String>?;
+          return MaterialPage(
+            key: state.pageKey,
+            child: AddLocationScreen(
+              preselectedBookId: extra?['bookId'],
+              preselectedBookTitle: extra?['bookTitle'],
+            ),
+          );
+        },
+      ),
+
+      // Location detail
+      GoRoute(
+        path: '/location/:locationId',
+        pageBuilder: (context, state) {
+          final locationId = state.pathParameters['locationId']!;
+          return MaterialPage(
+            key: state.pageKey,
+            child: LocationDetailScreen(locationId: locationId),
+          );
+        },
       ),
 
       // Book detail (outside shell for full screen)
@@ -218,7 +255,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
   int _getCurrentIndex() {
     if (location.startsWith('/search')) return 1;
     if (location.startsWith('/shelves')) return 2;
-    if (location.startsWith('/stats')) return 3;
+    if (location.startsWith('/map')) return 3;
     if (location.startsWith('/profile')) return 4;
     return 0;
   }
@@ -236,9 +273,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
         context.go('/shelves');
         break;
       case 3:
-        // Refresh data when navigating to stats
-        context.read<BooksProvider>().syncFromBackend();
-        context.go('/stats');
+        context.go('/map');
         break;
       case 4:
         context.go('/profile');
@@ -259,7 +294,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
             NativeGlassNavBarItem(label: 'Discover', symbol: 'sparkles'),
             NativeGlassNavBarItem(label: 'Search', symbol: 'magnifyingglass'),
             NativeGlassNavBarItem(label: 'Shelves', symbol: 'books.vertical'),
-            NativeGlassNavBarItem(label: 'Stats', symbol: 'chart.bar'),
+            NativeGlassNavBarItem(label: 'Map', symbol: 'map'),
             NativeGlassNavBarItem(label: 'Profile', symbol: 'person'),
           ],
         ),
@@ -289,9 +324,9 @@ class ScaffoldWithNavBar extends StatelessWidget {
             label: 'Shelves',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Stats',
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map),
+            label: 'Map',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outlined),
