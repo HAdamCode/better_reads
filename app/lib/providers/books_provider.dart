@@ -48,7 +48,7 @@ class BooksProvider extends ChangeNotifier {
   bool _isLoadingBecauseYouRead = false;
 
   // Reading sessions (for tracking re-reads)
-  Map<String, List<ReadingSession>> _readingSessions = {}; // bookId -> sessions
+  final Map<String, List<ReadingSession>> _readingSessions = {}; // bookId -> sessions
   bool _isLoadingReadingSessions = false;
 
   BooksProvider({
@@ -447,7 +447,9 @@ class BooksProvider extends ChangeNotifier {
 
     // Priority 1: Very specific topics (most valuable for recommendations)
     if (lower.contains('artificial intelligence') || lower.contains(' ai ') ||
-        lower.contains('machine learning')) return ('artificial+intelligence', 1);
+        lower.contains('machine learning')) {
+      return ('artificial+intelligence', 1);
+    }
     if (lower.contains('science fiction') || lower.contains('sci-fi')) return ('science_fiction', 1);
 
     // Priority 2: Specific genres/topics
@@ -461,19 +463,29 @@ class BooksProvider extends ChangeNotifier {
 
     // Priority 3: Moderately specific
     if (lower.contains('technology') || lower.contains('computers') ||
-        lower.contains('programming') || lower.contains('software')) return ('technology', 3);
+        lower.contains('programming') || lower.contains('software')) {
+      return ('technology', 3);
+    }
     if (lower.contains('economics') || lower.contains('finance') ||
-        lower.contains('investing')) return ('finance', 3);
+        lower.contains('investing')) {
+      return ('finance', 3);
+    }
     if (lower.contains('self-help') || lower.contains('self help') ||
-        lower.contains('personal development')) return ('self_help', 3);
+        lower.contains('personal development')) {
+      return ('self_help', 3);
+    }
     if (lower.contains('science') && !lower.contains('fiction')) return ('science', 3);
     if (lower.contains('health') || lower.contains('wellness') ||
-        lower.contains('fitness')) return ('health', 3);
+        lower.contains('fitness')) {
+      return ('health', 3);
+    }
     if (lower.contains('history')) return ('history', 3);
 
     // Priority 4: Generic categories (less useful for specific recommendations)
     if (lower.contains('business') || lower.contains('management') ||
-        lower.contains('leadership') || lower.contains('entrepreneur')) return ('business', 4);
+        lower.contains('leadership') || lower.contains('entrepreneur')) {
+      return ('business', 4);
+    }
     if (lower.contains('biography') || lower.contains('memoir') ||
         lower.contains('autobiography')) {
       return ('biography', 4);
